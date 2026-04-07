@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if id_editar %}Editar{% else %}Nuevo{% endif %} Usuario - Vitta Corp{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<div class="card-modern">
+    <div class="card-header-modern">
+        <h4 class="mb-0"><i class="bi bi-person-plus"></i> {% if id_editar %}Editar Usuario{% else %}Registrar Nuevo Usuario{% endif %}</h4>
+    </div>
+    <div class="card-body">
+        <form id="usuarioForm" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <input type="hidden" id="usuarioId" value="{{ id_editar|default:'' }}">
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre de Usuario *</label>
+                        <input type="text" id="strNombreUsuario" class="form-control" required 
+                               maxlength="40" placeholder="Solo letras" 
+                               onkeypress="return soloLetras(event)">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Perfil *</label>
+                        <select id="idPerfil" class="form-select" required>
+                            <option value="">Cargando perfiles...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Contraseña {% if not id_editar %}*{% endif %}</label>
+                        <input type="password" id="strPwd" class="form-control" 
+                               {% if not id_editar %}required{% endif %} 
+                               minlength="8" maxlength="20" placeholder="Mínimo 8 caracteres">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Confirmar Contraseña</label>
+                        <input type="password" id="confirmPwd" class="form-control" 
+                               {% if not id_editar %}required{% endif %} maxlength="20">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Correo Electrónico</label>
+                        <input type="email" id="strCorreo" class="form-control" 
+                               maxlength="50" placeholder="ejemplo@vittacorp.com">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Número Celular</label>
+                        <input type="tel" id="strNumeroCelular" class="form-control" 
+                               maxlength="10" placeholder="10 dígitos"
+                               onkeypress="return soloNumeros(event)">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Foto de Perfil</label>
+                        <input type="file" id="foto" class="form-control" accept="image/png, image/jpeg">
+                        <small class="text-muted">Solo JPG/PNG, máx 2MB.</small>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <img id="imgPreview" src="https://ui-avatars.com/api/?background=667eea&color=fff&bold=true&size=100" 
+                         class="rounded-circle shadow-sm" style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #eee;">
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="form-check form-switch">
+                        <input type="checkbox" id="idEstadoUsuario" class="form-check-input" checked>
+                        <label class="form-check-label fw-bold">Usuario Activo</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" id="btnGuardar" class="btn btn-primary-modern px-4 text-white">
+                    <i class="bi bi-save"></i> {% if id_editar %}Actualizar{% else %}Guardar{% endif %}
+                </button>
+                <a href="{% url 'usuarios' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const usuarioIdGlobal = "{{ id_editar|default:'' }}";
+    const API_BASE = "https://apirolescorp.bsite.net";
+
+    // --- SEGURIDAD DE ENTRADA (BLOQUEO DE TECLAS) ---
+    
+    function soloLetras(e) {
+        const key = e.keyCode || e.which;
+        const tecla = String.fromCharCode(key).toLowerCase();
+        const letras = " áéíóúabcdefghijklmnñopqrstuvwxyz"; // Incluye espacios y acentos
+        if (letras.indexOf(tecla) === -1) return false;
+    }
+
+    function soloNumeros(e) {
+        const key = e.keyCode || e.which;
+        if (key < 48 || key > 57) return false;
+    }
+
+    // --- VALIDACIONES DE FORMATO ---
+
+    function validarEmail(email) {
+        return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/.test(email);
+    }
+
+    // --- CARGA INICIAL ---
+
+    async function inicializar() {
+        await cargarPerfiles();
+        if (usuarioIdGlobal) await cargarUsuario(usuarioIdGlobal);
+    }
+
+    async function cargarPerfiles() {
+        try {
+            const res = await fetch('/api/proxy/Seguridad/perfiles', {
+                headers: { 'Authorization': `Bearer ${window.userToken}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('idPerfil').innerHTML = '<option value="">Seleccione un perfil</option>' + 
+                    data.map(p => `<option value="${p.id}">${p.strNombrePerfil}</option>`).join('');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function cargarUsuario(id) {
+        try {
+            const res = await fetch(`/api/proxy/Usuario/${id}`, {
+                headers: { 'Authorization': `Bearer ${window.userToken}` }
+            });
+            if (res.ok) {
+                const u = await res.json();
+                document.getElementById('strNombreUsuario').value = u.strNombreUsuario;
+                document.getElementById('idPerfil').value = u.idPerfil;
+                document.getElementById('strCorreo').value = u.strCorreo || '';
+                document.getElementById('strNumeroCelular').value = u.strNumeroCelular || '';
+                document.getElementById('idEstadoUsuario').checked = u.idEstadoUsuario;
+                if (u.strImagenUrl) document.getElementById('imgPreview').src = API_BASE + u.strImagenUrl;
+            }
+        } catch (e) { Swal.fire('Error', 'No se cargó el usuario', 'error'); }
+    }
+
+    // --- EVENTOS ---
+
+    document.getElementById('foto').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                Swal.fire('Error', 'La imagen supera los 2MB', 'warning');
+                this.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = e => document.getElementById('imgPreview').src = e.target.result;
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('usuarioForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btnGuardar');
+        const nombre = document.getElementById('strNombreUsuario').value.trim();
+        const perfil = document.getElementById('idPerfil').value;
+        const correo = document.getElementById('strCorreo').value.trim();
+        const celular = document.getElementById('strNumeroCelular').value.trim();
+        const pwd = document.getElementById('strPwd').value;
+        const cPwd = document.getElementById('confirmPwd').value;
+
+        // --- VALIDACIONES FINALES ---
+        if (!nombre || !perfil) return Swal.fire('Atención', 'Nombre y Perfil son obligatorios', 'warning');
+        
+        if (correo && !validarEmail(correo)) return Swal.fire('Atención', 'Correo electrónico inválido', 'warning');
+        
+        if (celular && celular.length !== 10) return Swal.fire('Atención', 'El celular debe tener 10 dígitos', 'warning');
+
+        if (!usuarioIdGlobal || pwd) {
+            if (pwd.length < 8) return Swal.fire('Atención', 'La contraseña debe tener mínimo 8 caracteres', 'warning');
+            if (pwd !== cPwd) return Swal.fire('Error', 'Las contraseñas no coinciden', 'error');
+        }
+
+        const formData = new FormData();
+        formData.append('strNombreUsuario', nombre);
+        formData.append('idPerfil', perfil);
+        formData.append('strCorreo', correo);
+        formData.append('strNumeroCelular', celular);
+        formData.append('idEstadoUsuario', document.getElementById('idEstadoUsuario').checked);
+        if (pwd) formData.append('strPwd', pwd);
+        
+        const fotoFile = document.getElementById('foto').files[0];
+        if (fotoFile) formData.append('foto', fotoFile);
+
+        btn.disabled = true;
+        Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const url = usuarioIdGlobal ? `/api/proxy/Usuario/${usuarioIdGlobal}` : '/api/proxy/Usuario';
+            const method = usuarioIdGlobal ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Authorization': `Bearer ${window.userToken}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                Swal.fire('¡Éxito!', 'Usuario guardado correctamente', 'success')
+                    .then(() => window.location.href = '{% url "usuarios" %}');
+            } else {
+                const err = await res.json();
+                Swal.fire('Error', err.message || 'Error en el servidor', 'error');
+                btn.disabled = false;
+            }
+        } catch (error) {
+            Swal.fire('Error', 'Falla de conexión', 'error');
+            btn.disabled = false;
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', inicializar);
+</script>
+{% endblock %}

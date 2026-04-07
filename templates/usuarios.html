@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios - Vitta Corp{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* Estilos para que la paginación sea visible y consistente */
+    .pagination-modern .page-link {
+        color: #333 !important;
+        border: 1px solid #ccc !important;
+        background-color: #fff !important;
+    }
+    .pagination-modern .page-item.active .page-link {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        color: #fff !important;
+    }
+    .pagination-modern .page-item.disabled .page-link {
+        color: #999 !important;
+        background-color: #f9f9f9 !important;
+    }
+</style>
+
+<div class="card-modern">
+    <div class="card-header-modern d-flex justify-content-between align-items-center">
+        <h4 class="mb-0"><i class="bi bi-people"></i> Gestión de Usuarios</h4>
+        <a href="{% url 'usuario_nuevo' %}" class="btn btn-light" id="btnNuevoUsuario">
+            <i class="bi bi-plus-circle"></i> Nuevo Usuario
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <input type="text" id="searchInput" class="form-control w-25" placeholder="Buscar usuario..." onkeyup="filtrar()">
+            <span id="contadorRegistros" class="badge bg-light text-dark border"></span>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th>Foto</th>
+                        <th>Usuario</th>
+                        <th>Correo</th>
+                        <th>Perfil</th>
+                        <th>Celular</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-usuarios"></tbody>
+            </table>
+        </div>
+        
+        <div id="paginacion" class="d-flex justify-content-center mt-3"></div>
+    </div>
+</div>
+
+<script>
+    // --- LIMPIADOR NINJA PARA PRODUCCIÓN ---
+    if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
+        console.log = function() {};
+        console.debug = function() {};
+        console.info = function() {};
+    }
+
+    let usuarios = [];
+    let perfiles = [];
+    let paginaActual = 1;
+    const itemsPorPagina = 5;
+    let totalRegistros = 0;
+    let filtroActual = '';
+
+    // BLOQUEO POR PERMISOS
+    document.addEventListener('permisosListos', () => {
+        const p = window.permisosGlobales['USUARIO'];
+        if (p && !p.canAdd) document.getElementById('btnNuevoUsuario')?.remove();
+        renderizarTabla();
+    });
+
+    async function cargarPerfiles() {
+        try {
+            const res = await fetch('/api/proxy/Seguridad/perfiles', {
+                headers: { 'Authorization': `Bearer ${window.userToken}` }
+            });
+            if (res.ok) perfiles = await res.json();
+        } catch (e) { /* Error silenciado para producción */ }
+    }
+
+    async function cargarUsuarios() {
+        const token = window.userToken;
+        try {
+            let url = `/api/proxy/Usuario?page=${paginaActual}&pageSize=${itemsPorPagina}`;
+            if (filtroActual) url += `&buscar=${encodeURIComponent(filtroActual)}`;
+
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                usuarios = result.data || [];
+                totalRegistros = result.total || 0;
+                renderizarTabla();
+            }
+        } catch (error) { /* Error silenciado para producción */ }
+    }
+
+    function renderizarTabla() {
+        const p = window.permisosGlobales ? window.permisosGlobales['USUARIO'] : null;
+        const tbody = document.getElementById('tabla-usuarios');
+        document.getElementById('contadorRegistros').innerText = `Total: ${totalRegistros}`;
+        
+        if (usuarios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron usuarios</td></tr>';
+            document.getElementById('paginacion').innerHTML = '';
+            return;
+        }
+
+        tbody.innerHTML = usuarios.map(u => {
+            const fotoUrl = u.strImagenUrl ? `https://apirolescorp.bsite.net${u.strImagenUrl}` : `https://ui-avatars.com/api/?background=667eea&color=fff&bold=true&name=${u.strNombreUsuario}`;
+            const perfilNombre = perfiles.find(pf => pf.id === u.idPerfil)?.strNombrePerfil || 'Cargando...';
+            
+            return `
+                <tr>
+                    <td><img src="${fotoUrl}" class="rounded-circle" width="40" height="40" style="object-fit: cover;" onerror="this.src='https://via.placeholder.com/40'"></td>
+                    <td><strong>${u.strNombreUsuario}</strong></td>
+                    <td>${u.strCorreo || '-'}</td>
+                    <td><span class="badge bg-secondary">${perfilNombre}</span></td>
+                    <td>${u.strNumeroCelular || '-'}</td>
+                    <td><span class="badge ${u.idEstadoUsuario ? 'bg-success' : 'bg-danger'}">${u.idEstadoUsuario ? 'Activo' : 'Inactivo'}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>
+                        ${p?.canEdit ? `<a href="/usuarios/editar/${u.id}/" class="btn btn-sm btn-warning me-1"><i class="bi bi-pencil"></i></a>` : ''}
+                        ${p?.canDelete ? `
+                            <button class="btn btn-sm ${u.idEstadoUsuario ? 'btn-danger' : 'btn-success'}" onclick="cambiarEstado(${u.id}, ${u.idEstadoUsuario})">
+                                <i class="bi ${u.idEstadoUsuario ? 'bi-ban' : 'bi-check-circle'}"></i>
+                            </button>` : ''}
+                    </td>
+                </tr>`;
+        }).join('');
+        
+        generarPaginacion();
+    }
+
+    function generarPaginacion() {
+        const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
+        const div = document.getElementById('paginacion');
+        if (totalPaginas <= 1) { div.innerHTML = ''; return; }
+
+        let html = '<nav><ul class="pagination pagination-modern">';
+        
+        // Botón Anterior (Corregido con texto/icono)
+        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">Anterior</a>
+                 </li>`;
+
+        for (let i = 1; i <= totalPaginas; i++) {
+            html += `<li class="page-item ${paginaActual === i ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${i})">${i}</a>
+                     </li>`;
+        }
+
+        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual + 1})">Siguiente</a>
+                 </li>`;
+
+        html += '</ul></nav>';
+        div.innerHTML = html;
+    }
+
+    window.cambiarPagina = async function(p) {
+        const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
+        if (p < 1 || p > totalPaginas) return;
+        paginaActual = p;
+        await cargarUsuarios();
+    };
+
+    window.filtrar = function() {
+        filtroActual = document.getElementById('searchInput').value;
+        paginaActual = 1;
+        cargarUsuarios(); 
+    };
+
+    // --- ACCIONES CON SWEETALERT ---
+    window.verDetalle = function(id) {
+        const u = usuarios.find(x => x.id === id);
+        if (u) {
+            const perfil = perfiles.find(p => p.id === u.idPerfil)?.strNombrePerfil || 'N/A';
+            const foto = u.strImagenUrl ? `https://apirolescorp.bsite.net${u.strImagenUrl}` : `https://ui-avatars.com/api/?name=${u.strNombreUsuario}`;
+            
+            Swal.fire({
+                title: 'Detalle del Usuario',
+                html: `
+                    <div class="text-center mb-3">
+                        <img src="${foto}" class="rounded-circle shadow-sm" width="100" height="100" style="object-fit: cover; border: 3px solid #eee;">
+                    </div>
+                    <div class="text-start">
+                        <p><strong>Usuario:</strong> ${u.strNombreUsuario}</p>
+                        <p><strong>Correo:</strong> ${u.strCorreo || '-'}</p>
+                        <p><strong>Perfil:</strong> ${perfil}</p>
+                        <p><strong>Celular:</strong> ${u.strNumeroCelular || '-'}</p>
+                        <p><strong>Estado:</strong> <span class="badge ${u.idEstadoUsuario ? 'bg-success' : 'bg-danger'}">${u.idEstadoUsuario ? 'Activo' : 'Inactivo'}</span></p>
+                    </div>
+                `,
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: '#4e73df'
+            });
+        }
+    };
+
+    window.cambiarEstado = function(id, estadoActual) {
+        const u = usuarios.find(x => x.id === id);
+        const accion = estadoActual ? 'desactivar' : 'activar';
+        
+        Swal.fire({
+            title: `¿Desea ${accion} al usuario?`,
+            text: `El usuario "${u.strNombreUsuario}" cambiará su estado.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: estadoActual ? '#d33' : '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`/api/proxy/Usuario/status/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${window.userToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(!estadoActual)
+                    });
+                    if (res.ok) {
+                        Swal.fire('¡Éxito!', `Usuario ${accion}do.`, 'success');
+                        await cargarUsuarios();
+                    }
+                } catch (e) { Swal.fire('Error', 'No se pudo cambiar el estado', 'error'); }
+            }
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await cargarPerfiles();
+        await cargarUsuarios();
+    });
+</script>
+{% endblock %}

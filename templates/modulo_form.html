@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Módulo - Vitta Corp{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
+<li class="breadcrumb-item"><a href="{% url 'modulos' %}">Módulos</a></li>
+<li class="breadcrumb-item active">Nuevo Módulo</li>
+{% endblock %}
+
+{% block content %}
+<div class="card card-modern mx-auto mt-4" style="max-width: 500px;">
+    <div class="card-header-modern">
+        <h4 class="mb-0"><i class="bi bi-grid-plus"></i> Registrar Nuevo Módulo</h4>
+    </div>
+    <div class="card-body p-4">
+        <form id="formModulo">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Nombre del Módulo (Mayúsculas)</label>
+                <input type="text" id="nombreModulo" class="form-control form-control-lg" required 
+                       placeholder="EJ: INVENTARIOS" style="text-transform: uppercase;">
+                <div class="form-text">Este nombre aparecerá en el menú desplegable.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">Asignar a Menú</label>
+                <select id="idMenu" class="form-select form-select-lg" required>
+                    <option value="" disabled selected>Seleccione una categoría...</option>
+                    <option value="1">SEGURIDAD</option>
+                    <option value="2">PRINCIPAL 1</option>
+                    <option value="3">PRINCIPAL 2</option>
+                </select>
+                <div class="form-text">Indica bajo qué sección de la Navbar se mostrará.</div>
+            </div>
+
+            <hr>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary-modern text-white btn-lg" id="btnGuardar">
+                    <i class="bi bi-save"></i> Crear y Vincular
+                </button>
+                <a href="{% url 'modulos' %}" class="btn btn-light">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('formModulo').onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btnGuardar');
+        const nombre = document.getElementById('nombreModulo').value.trim().toUpperCase();
+        const menuId = document.getElementById('idMenu').value;
+        const token = window.userToken;
+
+        if (!nombre || !menuId) {
+            alert("Por favor rellena todos los campos.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+
+        try {
+            const resModulo = await fetch('/api/proxy/Seguridad/modulo', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    strNombreModulo: nombre 
+                })
+            });
+
+            if (resModulo.ok) {
+                const nuevoMod = await resModulo.json();
+                console.log("Módulo creado:", nuevoMod);
+
+                const resVinculo = await fetch('/api/proxy/Seguridad/vincular-menu', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        IdMenu: parseInt(menuId), 
+                        IdModulo: nuevoMod.id 
+                    })
+                });
+
+                if (resVinculo.ok) {
+                    alert("Módulo registrado y vinculado correctamente.");
+                    window.location.href = "{% url 'modulos' %}";
+                } else {
+                    const errVinculo = await resVinculo.json();
+                    alert("Módulo creado, pero falló la vinculación: " + (errVinculo.message || "Error desconocido"));
+                    window.location.href = "{% url 'modulos' %}";
+                }
+            } else {
+                const errMod = await resModulo.json();
+                alert("Error al crear módulo: " + (errMod.message || "Nombre duplicado o error de red"));
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-save"></i> Crear y Vincular';
+            }
+        } catch (error) {
+            console.error("Error crítico:", error);
+            alert("Error de conexión con la API.");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save"></i> Crear y Vincular';
+        }
+    };
+</script>
+{% endblock %}

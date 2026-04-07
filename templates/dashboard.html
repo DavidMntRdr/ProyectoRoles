@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - Vitta Corp{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h4 class="mb-0"><i class="bi bi-speedometer2"></i> Panel de control</h4>
+            </div>
+            <div class="card-body text-center py-5">
+                <i class="bi bi-check-circle-fill" style="font-size: 80px; color: #d2d4db;"></i>
+                <h2 class="mt-3">Bienvenido, {{request.session.username}}</h2>
+                <p class="text-muted">Selecciona una opción en el menú para comenzar.</p>
+                
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

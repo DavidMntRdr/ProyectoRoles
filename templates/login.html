@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Sistema - Vitta Corp</title>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .login-container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 400px; 
+        }
+        .login-container h2 { 
+            text-align: center; 
+            color: #2c3e50; 
+            margin-bottom: 25px; 
+        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #666; }
+        input[type="text"], input[type="password"] { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            box-sizing: border-box; 
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        .btn-login { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: #1a73e8; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-top: 10px; 
+            transition: background 0.3s;
+        }
+        .btn-login:hover { background-color: #1557b0; }
+        .messages { list-style: none; padding: 0; margin-bottom: 20px; }
+        .message-error { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: 1px solid #f5c6cb; 
+            font-size: 14px; 
+            text-align: center;
+        }
+        .captcha-box { 
+            margin: 20px 0; 
+            display: flex; 
+            justify-content: center; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Vitta Roles Corp</h2>
+
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="message-error">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="POST" id="loginForm">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="usuario">Usuario:</label>
+            <input type="text" id="usuario" name="usuario" required autocomplete="username" maxlength="30">
+        </div>
+        <div class="form-group">
+            <label for="password">Contraseña:</label>
+            <input type="password" id="password" name="password" required autocomplete="current-password" maxlength="25">
+        </div>
+
+        <div class="captcha-box">
+            <div class="g-recaptcha" data-sitekey="6Ler9I0sAAAAADKAUfuRCHQAYl2WdPUxoX_FAZlP"></div>
+        </div>
+
+        <button type="submit" class="btn-login" id="btnIngresar">Iniciar Sesión</button>
+    </form>
+</div>
+
+<script>
+    /* MECANISMO DE PROTECCIÓN PARA PRODUCCIÓN 
+       Comentamos logs y desactivamos consola si no es localhost
+    */
+    if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
+        // console.log("Modo producción detectado: Limpiando rastros..."); // Log comentado
+        console.log = function() {};
+        console.info = function() {};
+        console.debug = function() {};
+        // console.warn = function() {}; // Opcional: silenciar advertencias
+    }
+
+    // Validación básica antes de enviar para evitar spam
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        const response = grecaptcha.getResponse();
+        if (response.length == 0) {
+            // No mostramos alert, dejamos que Django maneje el error o podrías usar SweetAlert aquí
+            // console.log("Intento de login sin captcha bloqueado"); // Log comentado
+        } else {
+            document.getElementById('btnIngresar').disabled = true;
+            document.getElementById('btnIngresar').innerText = 'Verificando...';
+        }
+    });
+</script>
+
+</body>
+</html>

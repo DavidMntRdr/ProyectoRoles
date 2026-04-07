@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% block title %}Módulos - Vitta Corp{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* Estilos para que la paginación sea visible y consistente */
+    .pagination-modern .page-link {
+        color: #333 !important;
+        border: 1px solid #ccc !important;
+        background-color: #fff !important;
+    }
+    .pagination-modern .page-item.active .page-link {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="card-modern">
+    <div class="card-header-modern d-flex justify-content-between align-items-center">
+        <h4 class="mb-0"><i class="bi bi-grid"></i> Gestión de Módulos</h4>
+        <button class="btn btn-light" id="btnNuevoModulo" onclick="abrirModal()">
+            <i class="bi bi-plus-circle"></i> Nuevo Módulo
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <input type="text" id="searchInput" class="form-control w-25" placeholder="Buscar módulo..." onkeyup="filtrar()">
+            <span id="contadorRegistros" class="badge bg-light text-dark border"></span>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th>Nombre del Módulo</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-modulos"></tbody>
+            </table>
+        </div>
+        
+        <div id="paginacion" class="d-flex justify-content-center mt-3"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="moduloModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalTitle">Nuevo Módulo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="moduloForm" novalidate>
+                    <input type="hidden" id="moduloId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Módulo *</label>
+                        <input type="text" id="nombreModuloInput" class="form-control" required 
+                               maxlength="20" onkeypress="return soloLetras(event)"
+                               style="text-transform: uppercase;" placeholder="EJ: INVENTARIOS">
+                    </div>
+                    <div class="mb-3" id="divMenuAsignacion">
+                        <label class="form-label fw-bold">Asignar a Menú Navbar *</label>
+                        <select id="idMenuInput" class="form-select">
+                            <option value="1">SEGURIDAD</option>
+                            <option value="2">PRINCIPAL 1</option>
+                            <option value="3">PRINCIPAL 2</option>
+                        </select>
+                        <small class="text-muted">Indica bajo qué sección aparecerá.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarModulo()" id="btnGuardarModulo">Guardar y Vincular</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let listaModulos = []; 
+    let paginaActual = 1;
+    const itemsPorPagina = 5;
+    let filtroActual = '';
+
+    // --- SEGURIDAD DE ENTRADA ---
+    function soloLetras(e) {
+        const key = e.keyCode || e.which;
+        const tecla = String.fromCharCode(key).toLowerCase();
+        const letras = " áéíóúabcdefghijklmnñopqrstuvwxyz";
+        if (letras.indexOf(tecla) === -1) return false;
+    }
+
+    // --- BLOQUEO DINÁMICO ---
+    document.addEventListener('permisosListos', () => {
+        const p = window.permisosGlobales['MÓDULO'] || window.permisosGlobales['MODULO'];
+        if (p && !p.canAdd) document.getElementById('btnNuevoModulo')?.remove();
+        renderizarTabla();
+    });
+
+    async function cargarModulos() {
+        const token = window.userToken;
+        if (!token) return;
+        try {
+            const res = await fetch('/api/proxy/Seguridad/modulos', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                listaModulos = await res.json();
+                renderizarTabla();
+            }
+        } catch (error) { console.error('Error al cargar:', error); }
+    }
+
+    function renderizarTabla() {
+        const tbody = document.getElementById('tabla-modulos');
+        const p = window.permisosGlobales ? (window.permisosGlobales['MÓDULO'] || window.permisosGlobales['MODULO']) : null;
+        
+        let datosFiltrados = listaModulos.filter(m => {
+            const nombre = (m.strNombreModulo || m.nombreModulo || "");
+            return nombre.toLowerCase().includes(filtroActual.toLowerCase());
+        });
+
+        document.getElementById('contadorRegistros').innerText = `Total: ${datosFiltrados.length}`;
+        
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
+        
+        if (paginados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay módulos registrados</td></tr>';
+            document.getElementById('paginacion').innerHTML = '';
+            return;
+        }
+        
+        tbody.innerHTML = paginados.map(m => `
+            <tr>
+                <td><strong>${m.strNombreModulo || m.nombreModulo}</strong></td>
+                <td class="text-center">
+                    ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarModulo(${m.id})"><i class="bi bi-pencil"></i></button>` : ''}
+                    ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarModulo(${m.id})"><i class="bi bi-trash"></i></button>` : ''}
+                </td>
+            </tr>`).join('');
+        
+        generarPaginacion(datosFiltrados.length);
+    }
+
+    function generarPaginacion(total) {
+        const totalPaginas = Math.ceil(total / itemsPorPagina);
+        const div = document.getElementById('paginacion');
+        if (totalPaginas <= 1) { div.innerHTML = ''; return; }
+
+        let html = '<nav><ul class="pagination pagination-modern">';
+        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">«</a></li>`;
+        for (let i = 1; i <= totalPaginas; i++) {
+            html += `<li class="page-item ${paginaActual === i ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${i})">${i}</a></li>`;
+        }
+        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual + 1})">»</a></li>`;
+        div.innerHTML = html + '</ul></nav>';
+    }
+
+    window.cambiarPagina = function(p) { paginaActual = p; renderizarTabla(); };
+    window.filtrar = function() { filtroActual = document.getElementById('searchInput').value; paginaActual = 1; renderizarTabla(); };
+
+    window.abrirModal = function() {
+        document.getElementById('moduloId').value = '';
+        document.getElementById('nombreModuloInput').value = '';
+        document.getElementById('divMenuAsignacion').style.display = 'block';
+        document.getElementById('modalTitle').innerText = 'Nuevo Módulo';
+        new bootstrap.Modal(document.getElementById('moduloModal')).show();
+    };
+
+    window.guardarModulo = async function() {
+        const btn = document.getElementById('btnGuardarModulo');
+        const id = document.getElementById('moduloId').value;
+        const nombre = document.getElementById('nombreModuloInput').value.trim().toUpperCase();
+        const idMenu = document.getElementById('idMenuInput').value;
+        const token = window.userToken;
+
+        if (!nombre) return Swal.fire('Atención', 'El nombre es obligatorio', 'warning');
+
+        btn.disabled = true;
+        Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+        try {
+            const url = id ? `/api/proxy/Seguridad/modulo/${id}` : '/api/proxy/Seguridad/modulo';
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id ? parseInt(id) : 0, strNombreModulo: nombre })
+            });
+
+            if (res.ok) {
+                const moduloData = await res.json();
+                if (!id) {
+                    await fetch('/api/proxy/Seguridad/vincular-menu', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ IdMenu: parseInt(idMenu), IdModulo: moduloData.id })
+                    });
+                }
+                Swal.fire('¡Éxito!', 'Módulo procesado. La Navbar se actualizará.', 'success').then(() => location.reload());
+            } else {
+                const err = await res.json();
+                Swal.fire('Error', err.message || 'Error en el servidor', 'error');
+                btn.disabled = false;
+            }
+        } catch (e) { 
+            Swal.fire('Error', 'Falla de conexión', 'error');
+            btn.disabled = false;
+        }
+    };
+
+    window.editarModulo = function(id) {
+        const m = listaModulos.find(x => x.id === id);
+        if (m) {
+            document.getElementById('moduloId').value = m.id;
+            document.getElementById('nombreModuloInput').value = m.strNombreModulo || m.nombreModulo;
+            document.getElementById('divMenuAsignacion').style.display = 'none';
+            document.getElementById('modalTitle').innerText = 'Editar Módulo';
+            new bootstrap.Modal(document.getElementById('moduloModal')).show();
+        }
+    };
+
+    window.eliminarModulo = async function(id) {
+        Swal.fire({
+            title: '¿Eliminar este módulo?',
+            text: "Se borrarán también los permisos asociados.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`/api/proxy/Seguridad/modulo/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${window.userToken}` }
+                    });
+                    if (res.ok) {
+                        Swal.fire('Eliminado', 'Módulo borrado con éxito.', 'success');
+                        await cargarModulos();
+                    }
+                } catch (e) { Swal.fire('Error', 'No se pudo eliminar', 'error'); }
+            }
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', cargarModulos);
+</script>
+{% endblock %}

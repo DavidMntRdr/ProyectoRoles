@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% block title %}Perfiles - Vitta Corp{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* Estilos para que la paginación sea visible */
+    .pagination-modern .page-link {
+        color: #333 !important;
+        border: 1px solid #ccc !important;
+        background-color: #fff !important;
+    }
+    .pagination-modern .page-item.active .page-link {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="card-modern">
+    <div class="card-header-modern d-flex justify-content-between align-items-center">
+        <h4 class="mb-0"><i class="bi bi-shield-lock"></i> Gestión de Perfiles</h4>
+        <button class="btn btn-light" id="btnNuevoPerfil" onclick="abrirModal()">
+            <i class="bi bi-plus-circle"></i> Nuevo Perfil
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <input type="text" id="searchInput" class="form-control w-25" placeholder="Buscar perfil..." onkeyup="filtrar()">
+            <span id="contadorRegistros" class="badge bg-light text-dark border"></span>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th>Nombre del Perfil</th>
+                        <th>Administrador</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-perfiles"></tbody>
+            </table>
+        </div>
+        
+        <div id="paginacion" class="d-flex justify-content-center mt-3"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="perfilModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalTitle">Nuevo Perfil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="perfilForm" novalidate>
+                    <input type="hidden" id="perfilId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Perfil *</label>
+                        <input type="text" id="nombrePerfil" class="form-control" required 
+                               maxlength="20" onkeypress="return soloLetras(event)" 
+                               placeholder="Ej: VENTAS">
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input type="checkbox" id="esAdmin" class="form-check-input">
+                        <label class="form-check-label fw-bold">¿Es perfil de Administrador?</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarPerfil()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="detalleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Detalle del Perfil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalleBody"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let perfiles = [];
+    let paginaActual = 1;
+    const itemsPorPagina = 5;
+    let filtroActual = '';
+
+    // --- BLOQUEO DINÁMICO ---
+    document.addEventListener('permisosListos', () => {
+        const p = window.permisosGlobales['PERFIL'];
+        if (p && !p.canAdd) document.getElementById('btnNuevoPerfil')?.remove();
+        renderizarTabla();
+    });
+
+    // --- SEGURIDAD DE ENTRADA ---
+    function soloLetras(e) {
+        const key = e.keyCode || e.which;
+        const tecla = String.fromCharCode(key).toLowerCase();
+        const letras = " áéíóúabcdefghijklmnñopqrstuvwxyz";
+        if (letras.indexOf(tecla) === -1) return false;
+    }
+
+    async function cargarPerfiles() {
+        try {
+            const res = await fetch('/api/proxy/Seguridad/perfiles', {
+                headers: { 'Authorization': `Bearer ${window.userToken}` }
+            });
+            if (res.ok) {
+                perfiles = await res.json();
+                renderizarTabla();
+            }
+        } catch (error) { console.error('Error cargando perfiles:', error); }
+    }
+
+    function renderizarTabla() {
+        const p = window.permisosGlobales ? window.permisosGlobales['PERFIL'] : null;
+        let datosFiltrados = perfiles.filter(perfil => 
+            perfil.strNombrePerfil.toLowerCase().includes(filtroActual.toLowerCase())
+        );
+
+        document.getElementById('contadorRegistros').innerText = `Total: ${datosFiltrados.length}`;
+        
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
+        const tbody = document.getElementById('tabla-perfiles');
+        
+        if (paginados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No se encontraron perfiles</td></tr>';
+            document.getElementById('paginacion').innerHTML = '';
+            return;
+        }
+        
+        tbody.innerHTML = paginados.map(perfil => `
+            <tr>
+                <td><strong>${perfil.strNombrePerfil}</strong></td>
+                <td><span class="badge ${perfil.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${perfil.bitAdministrador ? 'Sí' : 'No'}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-info me-1" onclick="verDetalle(${perfil.id})"><i class="bi bi-eye"></i></button>
+                    ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarPerfil(${perfil.id})"><i class="bi bi-pencil"></i></button>` : ''}
+                    ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarPerfil(${perfil.id})"><i class="bi bi-trash"></i></button>` : ''}
+                </td>
+            </tr>`).join('');
+        
+        generarPaginacion(datosFiltrados.length);
+    }
+
+    function generarPaginacion(total) {
+        const totalPaginas = Math.ceil(total / itemsPorPagina);
+        const div = document.getElementById('paginacion');
+        if (totalPaginas <= 1) { div.innerHTML = ''; return; }
+
+        let html = '<nav><ul class="pagination pagination-modern">';
+        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1})">«</a></li>`;
+        for (let i = 1; i <= totalPaginas; i++) {
+            html += `<li class="page-item ${paginaActual === i ? 'active' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a></li>`;
+        }
+        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1})">»</a></li>`;
+        div.innerHTML = html + '</ul></nav>';
+    }
+
+    window.cambiarPagina = function(p) { paginaActual = p; renderizarTabla(); };
+    window.filtrar = function() { filtroActual = document.getElementById('searchInput').value; paginaActual = 1; renderizarTabla(); };
+
+    window.abrirModal = function() {
+        document.getElementById('perfilId').value = '';
+        document.getElementById('perfilForm').reset();
+        document.getElementById('modalTitle').innerText = 'Nuevo Perfil';
+        new bootstrap.Modal(document.getElementById('perfilModal')).show();
+    };
+
+    window.guardarPerfil = async function() {
+        const id = document.getElementById('perfilId').value;
+        const nombre = document.getElementById('nombrePerfil').value.trim();
+        
+        if (!nombre) return Swal.fire('Atención', 'El nombre del perfil es requerido', 'warning');
+
+        const data = { strNombrePerfil: nombre, bitAdministrador: document.getElementById('esAdmin').checked };
+        const url = id ? `/api/proxy/Seguridad/perfil/${id}` : '/api/proxy/Seguridad/perfil';
+        const method = id ? 'PUT' : 'POST';
+
+        Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Authorization': `Bearer ${window.userToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('perfilModal')).hide();
+                await cargarPerfiles();
+                Swal.fire('¡Éxito!', 'Perfil guardado correctamente', 'success');
+            } else {
+                const err = await res.json();
+                Swal.fire('Error', err.message || 'Error al guardar', 'error');
+            }
+        } catch (e) { Swal.fire('Error', 'Falla de conexión', 'error'); }
+    };
+
+    window.editarPerfil = function(id) {
+        const p = perfiles.find(x => x.id === id);
+        if (p) {
+            document.getElementById('perfilId').value = p.id;
+            document.getElementById('nombrePerfil').value = p.strNombrePerfil;
+            document.getElementById('esAdmin').checked = p.bitAdministrador;
+            document.getElementById('modalTitle').innerText = 'Editar Perfil';
+            new bootstrap.Modal(document.getElementById('perfilModal')).show();
+        }
+    };
+
+    window.eliminarPerfil = function(id) {
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Se eliminarán también los permisos asociados a este perfil.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const res = await fetch(`/api/proxy/Seguridad/perfil/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${window.userToken}` }
+                });
+                if (res.ok) {
+                    await cargarPerfiles();
+                    Swal.fire('Eliminado', 'El perfil ha sido borrado.', 'success');
+                } else {
+                    const err = await res.json();
+                    Swal.fire('Error', err.message || 'No se pudo eliminar', 'error');
+                }
+            }
+        });
+    };
+
+    window.verDetalle = function(id) {
+        const p = perfiles.find(x => x.id === id);
+        if (p) {
+            document.getElementById('detalleBody').innerHTML = `
+                <table class="table table-sm table-borderless">
+                    <tr><th>ID:</th><td>${p.id}</td></tr>
+                    <tr><th>Nombre:</th><td><strong>${p.strNombrePerfil}</strong></td></tr>
+                    <tr><th>Admin:</th><td><span class="badge ${p.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${p.bitAdministrador ? 'Sí' : 'No'}</span></td></tr>
+                </table>`;
+            new bootstrap.Modal(document.getElementById('detalleModal')).show();
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', cargarPerfiles);
+</script>
+{% endblock %}
