@@ -26,7 +26,11 @@
         .card-header-modern .btn {
             width: 100%;
         }
-        #searchInput {
+        .filtros-container {
+            flex-direction: column;
+        }
+        .filtros-container .form-control,
+        .filtros-container .form-select {
             width: 100% !important;
         }
         .table-modern td, .table-modern th {
@@ -43,8 +47,13 @@
         </a>
     </div>
     <div class="card-body">
-        <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <input type="text" id="searchInput" class="form-control w-100 w-md-25" placeholder="Buscar usuario..." onkeyup="filtrar()">
+        <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 filtros-container">
+            <input type="text" id="searchInput" class="form-control" style="width: 250px;" placeholder="Buscar por nombre..." onkeyup="filtrar()">
+            <select id="estadoFilter" class="form-select" style="width: 180px;" onchange="filtrar()">
+                <option value="">Todos los estados</option>
+                <option value="true">Activos</option>
+                <option value="false">Inactivos</option>
+            </select>
             <span id="contadorRegistros" class="badge bg-light text-dark border"></span>
         </div>
         
@@ -81,7 +90,8 @@
     let paginaActual = 1;
     const itemsPorPagina = 5;
     let totalRegistros = 0;
-    let filtroActual = '';
+    let filtroNombre = '';
+    let filtroEstado = '';
 
     document.addEventListener('permisosListos', () => {
         const p = window.permisosGlobales['USUARIO'];
@@ -102,7 +112,8 @@
         const token = window.userToken;
         try {
             let url = `/api/proxy/Usuario?page=${paginaActual}&pageSize=${itemsPorPagina}`;
-            if (filtroActual) url += `&buscar=${encodeURIComponent(filtroActual)}`;
+            if (filtroNombre) url += `&buscar=${encodeURIComponent(filtroNombre)}`;
+            if (filtroEstado !== '') url += `&estado=${filtroEstado}`;
 
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -123,7 +134,7 @@
         document.getElementById('contadorRegistros').innerText = `Total: ${totalRegistros}`;
         
         if (usuarios.length === 0) {
-            tbody.innerHTML = '<td><td colspan="7" class="text-center text-muted">No se encontraron usuarios</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron usuarios</td></tr>';
             document.getElementById('paginacion').innerHTML = '';
             return;
         }
@@ -165,10 +176,23 @@
                     <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">Anterior</a>
                  </li>`;
 
-        for (let i = 1; i <= totalPaginas; i++) {
+        let startPage = Math.max(1, paginaActual - 2);
+        let endPage = Math.min(totalPaginas, paginaActual + 2);
+        
+        if (startPage > 1) {
+            html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(1)">1</a></li>`;
+            if (startPage > 2) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
             html += `<li class="page-item ${paginaActual === i ? 'active' : ''}">
                         <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${i})">${i}</a>
-                     </li>`;
+                    </li>`;
+        }
+        
+        if (endPage < totalPaginas) {
+            if (endPage < totalPaginas - 1) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${totalPaginas})">${totalPaginas}</a></li>`;
         }
 
         html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
@@ -187,7 +211,8 @@
     };
 
     window.filtrar = function() {
-        filtroActual = document.getElementById('searchInput').value;
+        filtroNombre = document.getElementById('searchInput').value;
+        filtroEstado = document.getElementById('estadoFilter').value;
         paginaActual = 1;
         cargarUsuarios(); 
     };

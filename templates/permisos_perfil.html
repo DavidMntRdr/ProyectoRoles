@@ -54,6 +54,8 @@
             </table>
         </div>
 
+        <div id="paginacion" class="d-flex justify-content-center mt-3"></div>
+
         <div id="loadingIndicator" class="text-center py-4 d-none">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando...</span>
@@ -81,10 +83,12 @@
 </div>
 
 <script>
-    let matrizPermisos = [];
+    let matrizPermisosCompleta = [];
     let todosModulos = [];
     let perfilSeleccionado = null;
     let textoBusqueda = '';
+    let paginaActual = 1;
+    const itemsPorPagina = 8;
 
     async function cargarPerfiles() {
         const token = window.userToken;
@@ -115,12 +119,14 @@
         if (!perfilId) {
             document.getElementById('matriz-body').innerHTML = '<tr><td colspan="6" class="text-center text-muted">Seleccione un perfil para ver sus permisos</td></tr>';
             document.getElementById('btnGuardar').disabled = true;
+            document.getElementById('paginacion').innerHTML = '';
             return;
         }
 
         perfilSeleccionado = perfilId;
         document.getElementById('btnGuardar').disabled = false;
         document.getElementById('loadingIndicator').classList.remove('d-none');
+        paginaActual = 1;
         
         const token = window.userToken;
         
@@ -140,7 +146,7 @@
                 permisosMap[p.idModulo] = p;
             });
             
-            matrizPermisos = todosModulos.map(modulo => ({
+            matrizPermisosCompleta = todosModulos.map(modulo => ({
                 idModulo: modulo.id,
                 nombreModulo: modulo.strNombreModulo,
                 bitConsultar: permisosMap[modulo.id]?.bitConsulta || false,
@@ -160,23 +166,36 @@
         }
     }
 
-    function renderizarTabla() {
-        let datosFiltrados = matrizPermisos;
-        
+    function obtenerDatosFiltrados() {
+        let datosFiltrados = matrizPermisosCompleta;
         if (textoBusqueda) {
-            datosFiltrados = matrizPermisos.filter(m => 
+            datosFiltrados = matrizPermisosCompleta.filter(m => 
                 m.nombreModulo.toLowerCase().includes(textoBusqueda.toLowerCase())
             );
         }
+        return datosFiltrados;
+    }
+
+    function renderizarTabla() {
+        const datosFiltrados = obtenerDatosFiltrados();
+        const totalRegistros = datosFiltrados.length;
+        const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
+        
+        if (paginaActual > totalPaginas && totalPaginas > 0) paginaActual = totalPaginas;
+        if (paginaActual < 1) paginaActual = 1;
+        
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
         
         const tbody = document.getElementById('matriz-body');
         
-        if (datosFiltrados.length === 0) {
+        if (paginados.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No se encontraron módulos</td></tr>';
+            document.getElementById('paginacion').innerHTML = '';
             return;
         }
         
-        tbody.innerHTML = datosFiltrados.map(modulo => `
+        tbody.innerHTML = paginados.map(modulo => `
             <tr data-modulo-id="${modulo.idModulo}">
                 <td class="fw-bold">${modulo.nombreModulo}</td>
                 <td class="text-center">
@@ -208,10 +227,61 @@
         `).join('');
         
         actualizarSelectoresTodos();
+        generarPaginacion(totalRegistros);
+    }
+    
+    function generarPaginacion(totalRegistros) {
+        const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
+        const div = document.getElementById('paginacion');
+        
+        if (totalPaginas <= 1) {
+            div.innerHTML = '';
+            return;
+        }
+
+        let html = '<nav><ul class="pagination pagination-modern flex-wrap justify-content-center">';
+        
+        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">Anterior</a>
+                </li>`;
+
+        let startPage = Math.max(1, paginaActual - 2);
+        let endPage = Math.min(totalPaginas, paginaActual + 2);
+        
+        if (startPage > 1) {
+            html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(1)">1</a></li>`;
+            if (startPage > 2) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<li class="page-item ${paginaActual === i ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${i})">${i}</a>
+                    </li>`;
+        }
+        
+        if (endPage < totalPaginas) {
+            if (endPage < totalPaginas - 1) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${totalPaginas})">${totalPaginas}</a></li>`;
+        }
+
+        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual + 1})">Siguiente</a>
+                </li>`;
+
+        html += '</ul></nav>';
+        div.innerHTML = html;
+    }
+
+    function cambiarPagina(pagina) {
+        const datosFiltrados = obtenerDatosFiltrados();
+        const totalPaginas = Math.ceil(datosFiltrados.length / itemsPorPagina);
+        if (pagina < 1 || pagina > totalPaginas) return;
+        paginaActual = pagina;
+        renderizarTabla();
     }
     
     function actualizarPermiso(idModulo, tipo, valor) {
-        const modulo = matrizPermisos.find(m => m.idModulo === idModulo);
+        const modulo = matrizPermisosCompleta.find(m => m.idModulo === idModulo);
         if (modulo) {
             switch(tipo) {
                 case 'Consultar': modulo.bitConsultar = valor; break;
@@ -227,26 +297,34 @@
     }
     
     function seleccionarTodos(tipo) {
-        const checkboxes = document.querySelectorAll(`.permiso-${tipo.toLowerCase()}`);
+        const datosFiltrados = obtenerDatosFiltrados();
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
         const selectAllCheckbox = document.getElementById(`selectAll${tipo}`);
         const estado = selectAllCheckbox.checked;
         
-        checkboxes.forEach(cb => {
-            if (cb.checked !== estado) {
-                cb.checked = estado;
-                cb.dispatchEvent(new Event('change'));
+        paginados.forEach(modulo => {
+            const checkbox = document.querySelector(`tr[data-modulo-id="${modulo.idModulo}"] .permiso-${tipo.toLowerCase()}`);
+            if (checkbox && checkbox.checked !== estado) {
+                checkbox.checked = estado;
+                checkbox.dispatchEvent(new Event('change'));
             }
         });
     }
     
     function actualizarSelectoresTodos() {
         const tipos = ['Consultar', 'Agregar', 'Editar', 'Eliminar', 'Detalle'];
+        const datosFiltrados = obtenerDatosFiltrados();
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
         
         tipos.forEach(tipo => {
-            const checkboxes = document.querySelectorAll(`.permiso-${tipo.toLowerCase()}`);
+            const checkboxes = paginados.map(modulo => 
+                document.querySelector(`tr[data-modulo-id="${modulo.idModulo}"] .permiso-${tipo.toLowerCase()}`)
+            ).filter(cb => cb !== null);
             const selectAll = document.getElementById(`selectAll${tipo}`);
             if (selectAll && checkboxes.length > 0) {
-                const todosChecked = Array.from(checkboxes).every(cb => cb.checked);
+                const todosChecked = checkboxes.every(cb => cb.checked);
                 selectAll.checked = todosChecked;
             }
         });
@@ -254,6 +332,7 @@
     
     function filtrarModulos() {
         textoBusqueda = document.getElementById('buscarModulo').value;
+        paginaActual = 1;
         renderizarTabla();
     }
     
@@ -264,7 +343,7 @@
         }
         
         const token = window.userToken;
-        const permisosParaGuardar = matrizPermisos.map(modulo => ({
+        const permisosParaGuardar = matrizPermisosCompleta.map(modulo => ({
             idModulo: modulo.idModulo,
             idPerfil: parseInt(perfilSeleccionado),
             bitConsulta: modulo.bitConsultar,
