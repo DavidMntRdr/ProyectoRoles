@@ -76,7 +76,6 @@
 
             if (resModulo.ok) {
                 const nuevoMod = await resModulo.json();
-                console.log("Módulo creado:", nuevoMod);
 
                 const resVinculo = await fetch('/api/proxy/Seguridad/vincular-menu', {
                     method: 'POST',

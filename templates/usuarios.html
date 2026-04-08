@@ -5,7 +5,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    /* Estilos para que la paginación sea visible y consistente */
     .pagination-modern .page-link {
         color: #333 !important;
         border: 1px solid #ccc !important;
@@ -20,18 +19,32 @@
         color: #999 !important;
         background-color: #f9f9f9 !important;
     }
+    @media (max-width: 768px) {
+        .card-header-modern {
+            flex-direction: column;
+        }
+        .card-header-modern .btn {
+            width: 100%;
+        }
+        #searchInput {
+            width: 100% !important;
+        }
+        .table-modern td, .table-modern th {
+            white-space: nowrap;
+        }
+    }
 </style>
 
 <div class="card-modern">
-    <div class="card-header-modern d-flex justify-content-between align-items-center">
+    <div class="card-header-modern d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h4 class="mb-0"><i class="bi bi-people"></i> Gestión de Usuarios</h4>
         <a href="{% url 'usuario_nuevo' %}" class="btn btn-light" id="btnNuevoUsuario">
             <i class="bi bi-plus-circle"></i> Nuevo Usuario
         </a>
     </div>
     <div class="card-body">
-        <div class="mb-3 d-flex justify-content-between align-items-center">
-            <input type="text" id="searchInput" class="form-control w-25" placeholder="Buscar usuario..." onkeyup="filtrar()">
+        <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <input type="text" id="searchInput" class="form-control w-100 w-md-25" placeholder="Buscar usuario..." onkeyup="filtrar()">
             <span id="contadorRegistros" class="badge bg-light text-dark border"></span>
         </div>
         
@@ -57,7 +70,6 @@
 </div>
 
 <script>
-    // --- LIMPIADOR NINJA PARA PRODUCCIÓN ---
     if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
         console.log = function() {};
         console.debug = function() {};
@@ -71,7 +83,6 @@
     let totalRegistros = 0;
     let filtroActual = '';
 
-    // BLOQUEO POR PERMISOS
     document.addEventListener('permisosListos', () => {
         const p = window.permisosGlobales['USUARIO'];
         if (p && !p.canAdd) document.getElementById('btnNuevoUsuario')?.remove();
@@ -84,7 +95,7 @@
                 headers: { 'Authorization': `Bearer ${window.userToken}` }
             });
             if (res.ok) perfiles = await res.json();
-        } catch (e) { /* Error silenciado para producción */ }
+        } catch (e) { }
     }
 
     async function cargarUsuarios() {
@@ -103,7 +114,7 @@
                 totalRegistros = result.total || 0;
                 renderizarTabla();
             }
-        } catch (error) { /* Error silenciado para producción */ }
+        } catch (error) { }
     }
 
     function renderizarTabla() {
@@ -112,7 +123,7 @@
         document.getElementById('contadorRegistros').innerText = `Total: ${totalRegistros}`;
         
         if (usuarios.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron usuarios</td></tr>';
+            tbody.innerHTML = '<td><td colspan="7" class="text-center text-muted">No se encontraron usuarios</td></tr>';
             document.getElementById('paginacion').innerHTML = '';
             return;
         }
@@ -148,9 +159,8 @@
         const div = document.getElementById('paginacion');
         if (totalPaginas <= 1) { div.innerHTML = ''; return; }
 
-        let html = '<nav><ul class="pagination pagination-modern">';
+        let html = '<nav><ul class="pagination pagination-modern flex-wrap">';
         
-        // Botón Anterior (Corregido con texto/icono)
         html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
                     <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">Anterior</a>
                  </li>`;
@@ -182,7 +192,6 @@
         cargarUsuarios(); 
     };
 
-    // --- ACCIONES CON SWEETALERT ---
     window.verDetalle = function(id) {
         const u = usuarios.find(x => x.id === id);
         if (u) {

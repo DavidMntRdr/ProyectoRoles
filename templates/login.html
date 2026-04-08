@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Acceso al Sistema - Vitta Corp</title>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
@@ -14,10 +14,11 @@
             align-items: center; 
             height: 100vh; 
             margin: 0; 
+            padding: 16px;
         }
         .login-container { 
             background: white; 
-            padding: 30px; 
+            padding: 24px; 
             border-radius: 10px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             width: 100%; 
@@ -71,6 +72,10 @@
             display: flex; 
             justify-content: center; 
         }
+        @media (max-width: 480px) {
+            .login-container { padding: 20px; }
+            .g-recaptcha { transform: scale(0.85); transform-origin: center; }
+        }
     </style>
 </head>
 <body>
@@ -106,23 +111,15 @@
 </div>
 
 <script>
-    /* MECANISMO DE PROTECCIÓN PARA PRODUCCIÓN 
-       Comentamos logs y desactivamos consola si no es localhost
-    */
     if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
-        // console.log("Modo producción detectado: Limpiando rastros..."); // Log comentado
         console.log = function() {};
         console.info = function() {};
         console.debug = function() {};
-        // console.warn = function() {}; // Opcional: silenciar advertencias
     }
 
-    // Validación básica antes de enviar para evitar spam
     document.getElementById('loginForm').addEventListener('submit', function(e) {
         const response = grecaptcha.getResponse();
         if (response.length == 0) {
-            // No mostramos alert, dejamos que Django maneje el error o podrías usar SweetAlert aquí
-            // console.log("Intento de login sin captcha bloqueado"); // Log comentado
         } else {
             document.getElementById('btnIngresar').disabled = true;
             document.getElementById('btnIngresar').innerText = 'Verificando...';

@@ -14,8 +14,8 @@
             {% csrf_token %}
             <input type="hidden" id="usuarioId" value="{{ id_editar|default:'' }}">
             
-            <div class="row">
-                <div class="col-md-6">
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nombre de Usuario *</label>
                         <input type="text" id="strNombreUsuario" class="form-control" required 
@@ -23,7 +23,7 @@
                                onkeypress="return soloLetras(event)">
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Perfil *</label>
                         <select id="idPerfil" class="form-select" required>
@@ -33,8 +33,8 @@
                 </div>
             </div>
             
-            <div class="row">
-                <div class="col-md-6">
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Contraseña {% if not id_editar %}*{% endif %}</label>
                         <input type="password" id="strPwd" class="form-control" 
@@ -42,7 +42,7 @@
                                minlength="8" maxlength="20" placeholder="Mínimo 8 caracteres">
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Confirmar Contraseña</label>
                         <input type="password" id="confirmPwd" class="form-control" 
@@ -51,15 +51,15 @@
                 </div>
             </div>
             
-            <div class="row">
-                <div class="col-md-6">
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Correo Electrónico</label>
                         <input type="email" id="strCorreo" class="form-control" 
                                maxlength="50" placeholder="ejemplo@vittacorp.com">
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Número Celular</label>
                         <input type="tel" id="strNumeroCelular" class="form-control" 
@@ -69,22 +69,22 @@
                 </div>
             </div>
             
-            <div class="row align-items-center">
-                <div class="col-md-8">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-md-8">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Foto de Perfil</label>
                         <input type="file" id="foto" class="form-control" accept="image/png, image/jpeg">
                         <small class="text-muted">Solo JPG/PNG, máx 2MB.</small>
                     </div>
                 </div>
-                <div class="col-md-4 text-center">
+                <div class="col-12 col-md-4 text-center">
                     <img id="imgPreview" src="https://ui-avatars.com/api/?background=667eea&color=fff&bold=true&size=100" 
                          class="rounded-circle shadow-sm" style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #eee;">
                 </div>
             </div>
             
             <div class="row mt-3">
-                <div class="col-md-12">
+                <div class="col-12">
                     <div class="form-check form-switch">
                         <input type="checkbox" id="idEstadoUsuario" class="form-check-input" checked>
                         <label class="form-check-label fw-bold">Usuario Activo</label>
@@ -92,7 +92,7 @@
                 </div>
             </div>
             
-            <div class="d-flex gap-2 mt-4">
+            <div class="d-flex flex-wrap gap-2 mt-4">
                 <button type="submit" id="btnGuardar" class="btn btn-primary-modern px-4 text-white">
                     <i class="bi bi-save"></i> {% if id_editar %}Actualizar{% else %}Guardar{% endif %}
                 </button>
@@ -106,12 +106,10 @@
     const usuarioIdGlobal = "{{ id_editar|default:'' }}";
     const API_BASE = "https://apirolescorp.bsite.net";
 
-    // --- SEGURIDAD DE ENTRADA (BLOQUEO DE TECLAS) ---
-    
     function soloLetras(e) {
         const key = e.keyCode || e.which;
         const tecla = String.fromCharCode(key).toLowerCase();
-        const letras = " áéíóúabcdefghijklmnñopqrstuvwxyz"; // Incluye espacios y acentos
+        const letras = " áéíóúabcdefghijklmnñopqrstuvwxyz";
         if (letras.indexOf(tecla) === -1) return false;
     }
 
@@ -120,13 +118,9 @@
         if (key < 48 || key > 57) return false;
     }
 
-    // --- VALIDACIONES DE FORMATO ---
-
     function validarEmail(email) {
         return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/.test(email);
     }
-
-    // --- CARGA INICIAL ---
 
     async function inicializar() {
         await cargarPerfiles();
@@ -163,8 +157,6 @@
         } catch (e) { Swal.fire('Error', 'No se cargó el usuario', 'error'); }
     }
 
-    // --- EVENTOS ---
-
     document.getElementById('foto').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -190,7 +182,6 @@
         const pwd = document.getElementById('strPwd').value;
         const cPwd = document.getElementById('confirmPwd').value;
 
-        // --- VALIDACIONES FINALES ---
         if (!nombre || !perfil) return Swal.fire('Atención', 'Nombre y Perfil son obligatorios', 'warning');
         
         if (correo && !validarEmail(correo)) return Swal.fire('Atención', 'Correo electrónico inválido', 'warning');

@@ -12,18 +12,18 @@
         <h4 class="mb-0"><i class="bi bi-key"></i> Asignación de Permisos por Perfil</h4>
     </div>
     <div class="card-body">
-        <div class="row mb-4">
-            <div class="col-md-4">
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
                 <label class="form-label fw-bold">Seleccionar Perfil:</label>
                 <select id="perfilSelect" class="form-select" onchange="cargarMatrizPermisos()">
                     <option value="">-- Seleccione un perfil --</option>
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <label class="form-label fw-bold">Buscar Módulo:</label>
                 <input type="text" id="buscarModulo" class="form-control" placeholder="Escriba para filtrar..." onkeyup="filtrarModulos()">
             </div>
-            <div class="col-md-4 d-flex align-items-end">
+            <div class="col-12 col-md-4 d-flex align-items-end">
                 <button class="btn btn-success w-100" onclick="guardarTodosPermisos()" id="btnGuardar" disabled>
                     <i class="bi bi-save"></i> Guardar Todos los Permisos
                 </button>
@@ -34,12 +34,12 @@
             <table class="table table-modern">
                 <thead>
                     <tr class="text-center">
-                        <th class="text-start" style="width: 30%">Módulo</th>
-                        <th style="width: 14%">Consultar</th>
-                        <th style="width: 14%">Agregar</th>
-                        <th style="width: 14%">Editar</th>
-                        <th style="width: 14%">Eliminar</th>
-                        <th style="width: 14%">Detalle</th>
+                        <th class="text-start" style="min-width: 150px;">Módulo</th>
+                        <th style="min-width: 80px;">Consultar</th>
+                        <th style="min-width: 80px;">Agregar</th>
+                        <th style="min-width: 80px;">Editar</th>
+                        <th style="min-width: 80px;">Eliminar</th>
+                        <th style="min-width: 80px;">Detalle</th>
                     </tr>
                     <tr class="text-center bg-light">
                         <th class="text-start">Seleccionar todos:</th>
@@ -64,7 +64,7 @@
 </div>
 
 <div class="modal fade" id="confirmModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">Permisos Guardados</h5>

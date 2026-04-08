@@ -5,7 +5,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    /* Estilos para que la paginación sea visible */
     .pagination-modern .page-link {
         color: #333 !important;
         border: 1px solid #ccc !important;
@@ -16,18 +15,32 @@
         border-color: #0d6efd !important;
         color: #fff !important;
     }
+    @media (max-width: 768px) {
+        .card-header-modern {
+            flex-direction: column;
+        }
+        .card-header-modern .btn {
+            width: 100%;
+        }
+        #searchInput {
+            width: 100% !important;
+        }
+        .table-modern td, .table-modern th {
+            white-space: nowrap;
+        }
+    }
 </style>
 
 <div class="card-modern">
-    <div class="card-header-modern d-flex justify-content-between align-items-center">
+    <div class="card-header-modern d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h4 class="mb-0"><i class="bi bi-shield-lock"></i> Gestión de Perfiles</h4>
         <button class="btn btn-light" id="btnNuevoPerfil" onclick="abrirModal()">
             <i class="bi bi-plus-circle"></i> Nuevo Perfil
         </button>
     </div>
     <div class="card-body">
-        <div class="mb-3 d-flex justify-content-between align-items-center">
-            <input type="text" id="searchInput" class="form-control w-25" placeholder="Buscar perfil..." onkeyup="filtrar()">
+        <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <input type="text" id="searchInput" class="form-control w-100 w-md-25" placeholder="Buscar perfil..." onkeyup="filtrar()">
             <span id="contadorRegistros" class="badge bg-light text-dark border"></span>
         </div>
         
@@ -49,7 +62,7 @@
 </div>
 
 <div class="modal fade" id="perfilModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="modalTitle">Nuevo Perfil</h5>
@@ -70,7 +83,7 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer flex-wrap gap-2">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="guardarPerfil()">Guardar</button>
             </div>
@@ -79,7 +92,7 @@
 </div>
 
 <div class="modal fade" id="detalleModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">Detalle del Perfil</h5>
@@ -96,14 +109,12 @@
     const itemsPorPagina = 5;
     let filtroActual = '';
 
-    // --- BLOQUEO DINÁMICO ---
     document.addEventListener('permisosListos', () => {
         const p = window.permisosGlobales['PERFIL'];
         if (p && !p.canAdd) document.getElementById('btnNuevoPerfil')?.remove();
         renderizarTabla();
     });
 
-    // --- SEGURIDAD DE ENTRADA ---
     function soloLetras(e) {
         const key = e.keyCode || e.which;
         const tecla = String.fromCharCode(key).toLowerCase();
@@ -160,7 +171,7 @@
         const div = document.getElementById('paginacion');
         if (totalPaginas <= 1) { div.innerHTML = ''; return; }
 
-        let html = '<nav><ul class="pagination pagination-modern">';
+        let html = '<nav><ul class="pagination pagination-modern flex-wrap">';
         html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1})">«</a></li>`;
         for (let i = 1; i <= totalPaginas; i++) {
             html += `<li class="page-item ${paginaActual === i ? 'active' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a></li>`;
@@ -250,11 +261,13 @@
         const p = perfiles.find(x => x.id === id);
         if (p) {
             document.getElementById('detalleBody').innerHTML = `
-                <table class="table table-sm table-borderless">
-                    <tr><th>ID:</th><td>${p.id}</td></tr>
-                    <tr><th>Nombre:</th><td><strong>${p.strNombrePerfil}</strong></td></tr>
-                    <tr><th>Admin:</th><td><span class="badge ${p.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${p.bitAdministrador ? 'Sí' : 'No'}</span></td></tr>
-                </table>`;
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless">
+                        <tr><th>ID:</th><td>${p.id}</td></tr>
+                        <tr><th>Nombre:</th><td><strong>${p.strNombrePerfil}</strong></td></tr>
+                        <tr><th>Admin:</th><td><span class="badge ${p.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${p.bitAdministrador ? 'Sí' : 'No'}</span></td></tr>
+                    </table>
+                </div>`;
             new bootstrap.Modal(document.getElementById('detalleModal')).show();
         }
     };
