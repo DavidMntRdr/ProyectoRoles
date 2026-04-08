@@ -48,8 +48,8 @@
     </div>
     <div class="card-body">
         <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 filtros-container">
-            <input type="text" id="searchInput" class="form-control" style="width: 250px;" placeholder="Buscar por nombre..." onkeyup="filtrar()">
-            <select id="estadoFilter" class="form-select" style="width: 180px;" onchange="filtrar()">
+            <input type="text" id="searchInput" class="form-control" style="width: 250px;" placeholder="Buscar por nombre..." onkeyup="aplicarFiltros()">
+            <select id="estadoFilter" class="form-select" style="width: 180px;" onchange="aplicarFiltros()">
                 <option value="">Todos los estados</option>
                 <option value="true">Activos</option>
                 <option value="false">Inactivos</option>
@@ -85,11 +85,11 @@
         console.info = function() {};
     }
 
-    let usuarios = [];
+    let listaOriginalUsuarios = [];
+    let listaFiltradaUsuarios = [];
     let perfiles = [];
     let paginaActual = 1;
     const itemsPorPagina = 5;
-    let totalRegistros = 0;
     let filtroNombre = '';
     let filtroEstado = '';
 
@@ -111,45 +111,69 @@
     async function cargarUsuarios() {
         const token = window.userToken;
         try {
-            let url = `/api/proxy/Usuario?page=${paginaActual}&pageSize=${itemsPorPagina}`;
-            if (filtroNombre) url += `&buscar=${encodeURIComponent(filtroNombre)}`;
-            if (filtroEstado !== '') url += `&estado=${filtroEstado}`;
-
+            let url = `/api/proxy/Usuario?page=1&pageSize=1000`;
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (res.ok) {
                 const result = await res.json();
-                usuarios = result.data || [];
-                totalRegistros = result.total || 0;
-                renderizarTabla();
+                listaOriginalUsuarios = result.data || [];
+                aplicarFiltros();
             }
         } catch (error) { }
+    }
+
+    function aplicarFiltros() {
+        filtroNombre = document.getElementById('searchInput').value.toLowerCase().trim();
+        filtroEstado = document.getElementById('estadoFilter').value;
+        
+        listaFiltradaUsuarios = listaOriginalUsuarios.filter(usuario => {
+            let cumpleNombre = true;
+            let cumpleEstado = true;
+            
+            if (filtroNombre !== '') {
+                cumpleNombre = usuario.strNombreUsuario.toLowerCase().includes(filtroNombre);
+            }
+            
+            if (filtroEstado !== '') {
+                const estadoBool = filtroEstado === 'true';
+                cumpleEstado = usuario.idEstadoUsuario === estadoBool;
+            }
+            
+            return cumpleNombre && cumpleEstado;
+        });
+        
+        paginaActual = 1;
+        renderizarTabla();
     }
 
     function renderizarTabla() {
         const p = window.permisosGlobales ? window.permisosGlobales['USUARIO'] : null;
         const tbody = document.getElementById('tabla-usuarios');
+        const totalRegistros = listaFiltradaUsuarios.length;
         document.getElementById('contadorRegistros').innerText = `Total: ${totalRegistros}`;
         
-        if (usuarios.length === 0) {
+        if (listaFiltradaUsuarios.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron usuarios</td></tr>';
             document.getElementById('paginacion').innerHTML = '';
             return;
         }
-
-        tbody.innerHTML = usuarios.map(u => {
-            const fotoUrl = u.strImagenUrl ? `https://apirolescorp.bsite.net${u.strImagenUrl}` : `https://ui-avatars.com/api/?background=667eea&color=fff&bold=true&name=${u.strNombreUsuario}`;
+        
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = listaFiltradaUsuarios.slice(inicio, inicio + itemsPorPagina);
+        
+        tbody.innerHTML = paginados.map(u => {
+            const fotoUrl = u.strImagenUrl ? `https://apirolescorp.bsite.net${u.strImagenUrl}` : `https://ui-avatars.com/api/?background=667eea&color=fff&bold=true&name=${encodeURIComponent(u.strNombreUsuario)}`;
             const perfilNombre = perfiles.find(pf => pf.id === u.idPerfil)?.strNombrePerfil || 'Cargando...';
             
             return `
                 <tr>
                     <td><img src="${fotoUrl}" class="rounded-circle" width="40" height="40" style="object-fit: cover;" onerror="this.src='https://via.placeholder.com/40'"></td>
-                    <td><strong>${u.strNombreUsuario}</strong></td>
-                    <td>${u.strCorreo || '-'}</td>
-                    <td><span class="badge bg-secondary">${perfilNombre}</span></td>
-                    <td>${u.strNumeroCelular || '-'}</td>
+                    <td><strong>${escapeHtml(u.strNombreUsuario)}</strong></td>
+                    <td>${escapeHtml(u.strCorreo || '-')}</td>
+                    <td><span class="badge bg-secondary">${escapeHtml(perfilNombre)}</span></td>
+                    <td>${escapeHtml(u.strNumeroCelular || '-')}</td>
                     <td><span class="badge ${u.idEstadoUsuario ? 'bg-success' : 'bg-danger'}">${u.idEstadoUsuario ? 'Activo' : 'Inactivo'}</span></td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>
@@ -162,10 +186,20 @@
                 </tr>`;
         }).join('');
         
-        generarPaginacion();
+        generarPaginacion(totalRegistros);
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
     }
 
-    function generarPaginacion() {
+    function generarPaginacion(totalRegistros) {
         const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
         const div = document.getElementById('paginacion');
         if (totalPaginas <= 1) { div.innerHTML = ''; return; }
@@ -203,25 +237,18 @@
         div.innerHTML = html;
     }
 
-    window.cambiarPagina = async function(p) {
-        const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
-        if (p < 1 || p > totalPaginas) return;
-        paginaActual = p;
-        await cargarUsuarios();
-    };
-
-    window.filtrar = function() {
-        filtroNombre = document.getElementById('searchInput').value;
-        filtroEstado = document.getElementById('estadoFilter').value;
-        paginaActual = 1;
-        cargarUsuarios(); 
-    };
+    function cambiarPagina(pagina) {
+        const totalPaginas = Math.ceil(listaFiltradaUsuarios.length / itemsPorPagina);
+        if (pagina < 1 || pagina > totalPaginas) return;
+        paginaActual = pagina;
+        renderizarTabla();
+    }
 
     window.verDetalle = function(id) {
-        const u = usuarios.find(x => x.id === id);
+        const u = listaOriginalUsuarios.find(x => x.id === id);
         if (u) {
             const perfil = perfiles.find(p => p.id === u.idPerfil)?.strNombrePerfil || 'N/A';
-            const foto = u.strImagenUrl ? `https://apirolescorp.bsite.net${u.strImagenUrl}` : `https://ui-avatars.com/api/?name=${u.strNombreUsuario}`;
+            const foto = u.strImagenUrl ? `https://apirolescorp.bsite.net${u.strImagenUrl}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(u.strNombreUsuario)}`;
             
             Swal.fire({
                 title: 'Detalle del Usuario',
@@ -230,10 +257,10 @@
                         <img src="${foto}" class="rounded-circle shadow-sm" width="100" height="100" style="object-fit: cover; border: 3px solid #eee;">
                     </div>
                     <div class="text-start">
-                        <p><strong>Usuario:</strong> ${u.strNombreUsuario}</p>
-                        <p><strong>Correo:</strong> ${u.strCorreo || '-'}</p>
-                        <p><strong>Perfil:</strong> ${perfil}</p>
-                        <p><strong>Celular:</strong> ${u.strNumeroCelular || '-'}</p>
+                        <p><strong>Usuario:</strong> ${escapeHtml(u.strNombreUsuario)}</p>
+                        <p><strong>Correo:</strong> ${escapeHtml(u.strCorreo || '-')}</p>
+                        <p><strong>Perfil:</strong> ${escapeHtml(perfil)}</p>
+                        <p><strong>Celular:</strong> ${escapeHtml(u.strNumeroCelular || '-')}</p>
                         <p><strong>Estado:</strong> <span class="badge ${u.idEstadoUsuario ? 'bg-success' : 'bg-danger'}">${u.idEstadoUsuario ? 'Activo' : 'Inactivo'}</span></p>
                     </div>
                 `,
@@ -244,7 +271,7 @@
     };
 
     window.cambiarEstado = function(id, estadoActual) {
-        const u = usuarios.find(x => x.id === id);
+        const u = listaOriginalUsuarios.find(x => x.id === id);
         const accion = estadoActual ? 'desactivar' : 'activar';
         
         Swal.fire({
