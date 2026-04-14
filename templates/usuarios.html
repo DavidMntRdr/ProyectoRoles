@@ -189,8 +189,10 @@
                     <td>${escapeHtml(celularU)}</td>
                     <td><span class="badge ${estadoU ? 'bg-success' : 'bg-danger'}">${estadoU ? 'Activo' : 'Inactivo'}</span></td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>
+                        ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>` : ''}
+                        
                         ${p?.canEdit ? `<a href="/usuarios/editar/${u.id}/" class="btn btn-sm btn-warning me-1"><i class="bi bi-pencil"></i></a>` : ''}
+                        
                         ${p?.canDelete ? `
                             <button class="btn btn-sm ${estadoU ? 'btn-danger' : 'btn-success'}" onclick="cambiarEstado(${u.id}, ${estadoU})">
                                 <i class="bi ${estadoU ? 'bi-ban' : 'bi-check-circle'}"></i>
