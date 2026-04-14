@@ -142,6 +142,7 @@
         window.perfilId = "{{ perfil_id|escapejs }}";
         window.permisosGlobales = {};
 
+        // Diccionario de rutas para el mapeo del menú dinámico
         const RUTAS_SISTEMA = {
             "USUARIO": "{% url 'usuarios' %}",
             "PERFIL": "{% url 'perfiles' %}",
@@ -150,6 +151,7 @@
             "PERMISOS PERFIL": "{% url 'permisos_perfil' %}"
         };
 
+        // Silenciar consola en producción
         if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
             console.log = function() {};
             console.debug = function() {};
@@ -204,7 +206,9 @@
     async function fetchMenu(){
         const userId = window.userId; 
         const token = window.userToken;
-        const apiUrl = `https://apirolescorp.bsite.net/api/Menu/configuracion/${userId}`;
+        
+        // CORRECCIÓN: Apuntar a la ruta del Proxy interno en lugar de la API externa
+        const apiUrl = `/api/proxy/Menu/configuracion/${userId}`;
 
         if (!userId || userId === "" || userId.includes("{")) return;
 
@@ -246,6 +250,7 @@
                     navContainer.insertAdjacentHTML('beforeend', dropdown);
                 });
 
+                // Disparar evento para que las vistas hijas sepan que los permisos están listos
                 document.dispatchEvent(new Event('permisosListos'));
             }
         } catch (error) {

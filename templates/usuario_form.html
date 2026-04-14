@@ -2,6 +2,11 @@
 
 {% block title %}{% if id_editar %}Editar{% else %}Nuevo{% endif %} Usuario - Vitta Corp{% endblock %}
 
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'usuarios' %}">Usuarios</a></li>
+<li class="breadcrumb-item active">{% if id_editar %}Editar{% else %}Nuevo{% endif %} Usuario</li>
+{% endblock %}
+
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -93,7 +98,7 @@
             </div>
             
             <div class="d-flex flex-wrap gap-2 mt-4">
-                <button type="submit" id="btnGuardar" class="btn btn-primary-modern px-4 text-white">
+                <button type="submit" id="btnSubmit" class="btn btn-primary-modern px-4 text-white">
                     <i class="bi bi-save"></i> {% if id_editar %}Actualizar{% else %}Guardar{% endif %}
                 </button>
                 <a href="{% url 'usuarios' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
@@ -104,7 +109,6 @@
 
 <script>
     const usuarioIdGlobal = "{{ id_editar|default:'' }}";
-    const API_BASE = "https://apirolescorp.bsite.net";
 
     function soloLetras(e) {
         const key = e.keyCode || e.which;
@@ -135,7 +139,7 @@
             if (res.ok) {
                 const data = await res.json();
                 document.getElementById('idPerfil').innerHTML = '<option value="">Seleccione un perfil</option>' + 
-                    data.map(p => `<option value="${p.id}">${p.strNombrePerfil}</option>`).join('');
+                    data.map(p => `<option value="${p.id}">${p.strNombrePerfil || p.str_nombre_perfil}</option>`).join('');
             }
         } catch (e) { console.error(e); }
     }
@@ -147,12 +151,16 @@
             });
             if (res.ok) {
                 const u = await res.json();
-                document.getElementById('strNombreUsuario').value = u.strNombreUsuario;
-                document.getElementById('idPerfil').value = u.idPerfil;
-                document.getElementById('strCorreo').value = u.strCorreo || '';
-                document.getElementById('strNumeroCelular').value = u.strNumeroCelular || '';
-                document.getElementById('idEstadoUsuario').checked = u.idEstadoUsuario;
-                if (u.strImagenUrl) document.getElementById('imgPreview').src = API_BASE + u.strImagenUrl;
+                document.getElementById('strNombreUsuario').value = u.str_nombre_usuario || u.strNombreUsuario;
+                document.getElementById('idPerfil').value = u.id_perfil || u.idPerfil;
+                document.getElementById('strCorreo').value = u.str_correo || u.strCorreo || '';
+                document.getElementById('strNumeroCelular').value = u.str_numero_celular || u.strNumeroCelular || '';
+                document.getElementById('idEstadoUsuario').checked = u.id_estado_usuario !== undefined ? u.id_estado_usuario : u.idEstadoUsuario;
+                
+                const imgUrl = u.str_imagen_url || u.strImagenUrl;
+                if (imgUrl) {
+                    document.getElementById('imgPreview').src = imgUrl;
+                }
             }
         } catch (e) { Swal.fire('Error', 'No se cargó el usuario', 'error'); }
     }
@@ -174,7 +182,7 @@
     document.getElementById('usuarioForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const btn = document.getElementById('btnGuardar');
+        const btn = document.getElementById('btnSubmit');
         const nombre = document.getElementById('strNombreUsuario').value.trim();
         const perfil = document.getElementById('idPerfil').value;
         const correo = document.getElementById('strCorreo').value.trim();
@@ -183,9 +191,7 @@
         const cPwd = document.getElementById('confirmPwd').value;
 
         if (!nombre || !perfil) return Swal.fire('Atención', 'Nombre y Perfil son obligatorios', 'warning');
-        
         if (correo && !validarEmail(correo)) return Swal.fire('Atención', 'Correo electrónico inválido', 'warning');
-        
         if (celular && celular.length !== 10) return Swal.fire('Atención', 'El celular debe tener 10 dígitos', 'warning');
 
         if (!usuarioIdGlobal || pwd) {
@@ -202,7 +208,7 @@
         if (pwd) formData.append('strPwd', pwd);
         
         const fotoFile = document.getElementById('foto').files[0];
-        if (fotoFile) formData.append('foto', fotoFile);
+        if (fotoFile) formData.append('strImagenUrl', fotoFile);
 
         btn.disabled = true;
         Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });

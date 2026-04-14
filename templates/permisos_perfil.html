@@ -2,7 +2,6 @@
 {% block title %}Permisos por Perfil - Vitta Corp{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
 <li class="breadcrumb-item active">Permisos por Perfil</li>
 {% endblock %}
 
@@ -104,13 +103,10 @@
                 const perfiles = await res.json();
                 const select = document.getElementById('perfilSelect');
                 select.innerHTML = '<option value="">-- Seleccione un perfil --</option>' + 
-                    perfiles.map(p => `<option value="${p.id}">${p.strNombrePerfil}</option>`).join('');
-            } else {
-                console.error('Error cargando perfiles:', res.status);
+                    perfiles.map(p => `<option value="${p.id}">${p.strNombrePerfil || p.str_nombre_perfil}</option>`).join('');
             }
         } catch (error) {
             console.error('Error cargando perfiles:', error);
-            alert('Error de conexión con la API');
         }
     }
 
@@ -148,7 +144,7 @@
             
             matrizPermisosCompleta = todosModulos.map(modulo => ({
                 idModulo: modulo.id,
-                nombreModulo: modulo.strNombreModulo,
+                nombreModulo: modulo.strNombreModulo || modulo.str_nombre_modulo,
                 bitConsultar: permisosMap[modulo.id]?.bitConsulta || false,
                 bitAgregar: permisosMap[modulo.id]?.bitAgregar || false,
                 bitEditar: permisosMap[modulo.id]?.bitEditar || false,
@@ -240,7 +236,6 @@
         }
 
         let html = '<nav><ul class="pagination pagination-modern flex-wrap justify-content-center">';
-        
         html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
                     <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">Anterior</a>
                 </li>`;
@@ -307,7 +302,7 @@
             const checkbox = document.querySelector(`tr[data-modulo-id="${modulo.idModulo}"] .permiso-${tipo.toLowerCase()}`);
             if (checkbox && checkbox.checked !== estado) {
                 checkbox.checked = estado;
-                checkbox.dispatchEvent(new Event('change'));
+                actualizarPermiso(modulo.idModulo, tipo, estado);
             }
         });
     }
