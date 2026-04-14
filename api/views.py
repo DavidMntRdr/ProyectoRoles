@@ -28,21 +28,17 @@ class LoginView(APIView):
             return Response({'message': 'Usuario y contraseña requeridos'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Corregido: strNombreUsuario
             user = Usuario.objects.get(strNombreUsuario=usuario_nom)
         except Usuario.DoesNotExist:
             return Response({'message': 'Usuario o contraseña incorrectos'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Corregido: strPwd
         if not check_password(password, user.strPwd):
             return Response({'message': 'Usuario o contraseña incorrectos'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Corregido: idEstadoUsuario
         if not user.idEstadoUsuario:
             return Response({'message': 'El usuario se encuentra INACTIVO o ha sido dado de baja.'}, status=status.HTTP_400_BAD_REQUEST)
 
         refresh = RefreshToken.for_user(user)
-        # Corregido: idPerfil
         refresh['perfilId'] = user.idPerfil
         refresh['id'] = user.id
 
@@ -58,16 +54,15 @@ class LoginView(APIView):
 # ==================== MENU CONTROLLER ====================
 
 class MenuConfigView(APIView):
-    permission_classes = [AllowAny]  # ← Temporalmente AllowAny para debug
+    permission_classes = [AllowAny]  
 
     def get(self, request, id_usuario):
-        # Obtener token de la sesión o del header
         token = None
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
         
-        print(f"🔍 MENU - Token recibido: {bool(token)}")
+        print(f"MENU - Token recibido: {bool(token)}")
         
         try:
             usuario = Usuario.objects.get(id=id_usuario)
@@ -76,7 +71,6 @@ class MenuConfigView(APIView):
 
         permisos = PermisosPerfil.objects.filter(idPerfil=usuario.idPerfil, bitConsulta=True)
         modulos_con_permiso = list(permisos.values_list('idModulo', flat=True))
-
         menu_modulos = MenuModulo.objects.filter(idModulo__in=modulos_con_permiso)
         menus_dict = {}
 
@@ -148,9 +142,7 @@ class PermisosByPerfilView(APIView):
                 'bitEliminar': p.bitEliminar if p else False,
                 'bitDetalle': p.bitDetalle if p else False
             })
-
         return Response(resultado)
-
 
 class UpdatePermisosView(APIView):
     permission_classes = [AllowAny]
@@ -273,7 +265,6 @@ class PerfilDetailView(APIView):
 
 class ModulosView(APIView):
     permission_classes = [AllowAny]
-
     def get(self, request):
         if not validar_permiso(request, 1, 'C'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
@@ -285,17 +276,14 @@ class ModulosView(APIView):
     def post(self, request):
         if not validar_permiso(request, 1, 'A'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
-
         serializer = ModuloSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class ModuloDetailView(APIView):
     permission_classes = [AllowAny]
-
     def put(self, request, id):
         if not validar_permiso(request, 1, 'E'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
@@ -376,22 +364,18 @@ class UsuarioView(APIView):
         foto = request.FILES.get('strImagenUrl')
         if foto:
             import uuid
-            # Definimos la ruta: wwwroot/uploads (según tu settings.py)
             path_directorio = os.path.join(settings.MEDIA_ROOT, 'uploads')
             if not os.path.exists(path_directorio):
                 os.makedirs(path_directorio)
                 
-            # Generamos el nombre con GUID igual que en .NET
             extension = os.path.splitext(foto.name)[1]
             nombre_archivo = f"{uuid.uuid4()}{extension}"
             
-            # Guardamos el archivo físicamente
             ruta_fisica = os.path.join(path_directorio, nombre_archivo)
             with open(ruta_fisica, 'wb+') as destination:
                 for chunk in foto.chunks():
                     destination.write(chunk)
             
-            # GUARDAMOS EL STRING MANUAL (Esto evita el doble /uploads/)
             usuario.strImagenUrl = f"/uploads/{nombre_archivo}"
             usuario.save()
 
@@ -424,7 +408,6 @@ class UsuarioDetailView(APIView):
             usuario.strCorreo = request.data.get('strCorreo', usuario.strCorreo)
             usuario.strNumeroCelular = request.data.get('strNumeroCelular', usuario.strNumeroCelular)
             
-            # Ajuste de booleano para estado
             estado = request.data.get('idEstadoUsuario')
             if estado is not None:
                 usuario.idEstadoUsuario = str(estado).lower() in ['true', '1']
@@ -448,7 +431,6 @@ class UsuarioDetailView(APIView):
                     for chunk in foto.chunks():
                         destination.write(chunk)
                 
-                # Actualizamos el path manual
                 usuario.strImagenUrl = f"/uploads/{nombre_archivo}"
 
             usuario.save()

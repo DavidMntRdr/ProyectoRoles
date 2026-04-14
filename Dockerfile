@@ -27,5 +27,6 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 10000
 
-# Aumentamos a 3 workers y subimos el timeout del proceso
 CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:10000", "--workers", "3", "--timeout", "120"]
+
+

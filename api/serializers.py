@@ -13,7 +13,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# api/serializers.py
 
 class UsuarioListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,7 +24,7 @@ class UsuarioListSerializer(serializers.ModelSerializer):
             'strCorreo', 
             'strNumeroCelular', 
             'idEstadoUsuario', 
-            'strImagenUrl'  # <--- ASEGÚRATE DE QUE ESTÉ AQUÍ
+            'strImagenUrl'  
         ]
 
 class ModuloSerializer(serializers.ModelSerializer):

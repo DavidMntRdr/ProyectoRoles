@@ -53,29 +53,22 @@ def validar_permiso_completo(request, nombre_modulo, bit_requerido='bitConsulta'
 
 @csrf_exempt
 def proxy_api(request, path):
-    # 1. Determinar la URL de la API
-    # En Render usamos localhost:10000 para que la petición no salga del contenedor
     if os.environ.get('RENDER'):
         api_url = f"http://127.0.0.1:10000/api/{path}"
     else:
         scheme = 'https' if request.is_secure() else 'http'
         api_url = f"{scheme}://{request.get_host()}/api/{path}"
     
-    # 2. Configurar Headers y Token
     token = request.session.get('jwt_token')
     headers = {}
     if token:
         headers['Authorization'] = f'Bearer {token}'
     
     try:
-        # Debug para ver qué está intentando llamar el proxy
-        print(f"📡 PROXY: {request.method} -> {api_url}", flush=True)
-
+        print(f"PROXY: {request.method} -> {api_url}", flush=True)
         if request.method in ['POST', 'PUT']:
             content_type = request.content_type or ''
-            
             if 'multipart/form-data' in content_type:
-                # Manejo de archivos (Fotos de usuario)
                 if request.method == 'PUT':
                     data_parser, files_parser = MultiPartParser(
                         request.META, request, request.upload_handlers
@@ -85,7 +78,6 @@ def proxy_api(request, path):
                 else:
                     data = request.POST.dict()
                     files_dict = {k: (f.name, f.read(), f.content_type) for k, f in request.FILES.items()}
-
                 response = requests.request(
                     method=request.method,
                     url=api_url,
@@ -95,12 +87,10 @@ def proxy_api(request, path):
                     timeout=30
                 )
             else:
-                # Manejo de JSON normal
                 try:
                     body_data = json.loads(request.body.decode('utf-8')) if request.body else {}
                 except:
                     body_data = {}
-                
                 response = requests.request(
                     method=request.method,
                     url=api_url,
@@ -108,7 +98,6 @@ def proxy_api(request, path):
                     headers=headers,
                     timeout=30
                 )
-
         elif request.method == 'GET':
             response = requests.get(api_url, headers=headers, params=request.GET, timeout=30)
             
@@ -117,19 +106,16 @@ def proxy_api(request, path):
             
         else:
             return JsonResponse({'error': 'Método no soportado'}, status=405)
-
-        # 3. Retornar la respuesta de la API
-        print(f"✅ API RESPONSE: {response.status_code}", flush=True)
+        
+        print(f"API RESPONSE: {response.status_code}", flush=True)
         
         try:
             return JsonResponse(response.json(), status=response.status_code, safe=False)
         except:
-            # Por si la API devuelve texto plano o error HTML
             return JsonResponse({'data': response.text}, status=response.status_code)
 
     except Exception as e:
-        # ESTO ES LO QUE VERÁS EN LOS LOGS DE RENDER SI ALGO TRUENA
-        print(f"❌ PROXY CRITICAL ERROR: {str(e)}", flush=True)
+        print(f"PROXY CRITICAL ERROR: {str(e)}", flush=True)
         return JsonResponse({'error': str(e)}, status=500)
 
 # ==================== LOGIN / LOGOUT ====================

@@ -79,10 +79,8 @@
     </style>
 </head>
 <body>
-
 <div class="login-container">
     <h2>Vitta Roles Corp</h2>
-
     {% if messages %}
     <ul class="messages">
         {% for message in messages %}
@@ -90,7 +88,6 @@
         {% endfor %}
     </ul>
     {% endif %}
-
     <form method="POST" id="loginForm">
         {% csrf_token %}
         <div class="form-group">
