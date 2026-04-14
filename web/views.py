@@ -52,9 +52,6 @@ def validar_permiso_completo(request, nombre_modulo, bit_requerido='bitConsulta'
 
 @csrf_exempt
 def proxy_api(request, path):
-    import requests
-    import json
-    
     if os.environ.get('RENDER'):
         api_url = f"http://127.0.0.1:10000/api/{path}"
     else:
@@ -69,6 +66,7 @@ def proxy_api(request, path):
     try:
         if request.method in ['POST', 'PUT']:
             content_type = request.content_type or ''
+            
             if 'multipart/form-data' in content_type:
                 if request.method == 'PUT':
                     data_parser, files_parser = MultiPartParser(
@@ -80,15 +78,35 @@ def proxy_api(request, path):
                     data = request.POST.dict()
                     files_dict = {k: (f.name, f.read(), f.content_type) for k, f in request.FILES.items()}
 
-                response = requests.request(request.method, api_url, files=files_dict, data=data, headers=headers, timeout=30)
+                response = requests.request(
+                    method=request.method,
+                    url=api_url,
+                    files=files_dict,
+                    data=data,
+                    headers=headers,
+                    timeout=30
+                )
+            
             else:
-                body_data = json.loads(request.body.decode('utf-8')) if request.body else {}
-                response = requests.request(request.method, api_url, json=body_data, headers=headers, timeout=30)
+                try:
+                    body_data = json.loads(request.body.decode('utf-8')) if request.body else {}
+                except:
+                    body_data = {}
+                
+                response = requests.request(
+                    method=request.method,
+                    url=api_url,
+                    json=body_data,
+                    headers=headers,
+                    timeout=30
+                )
 
         elif request.method == 'GET':
             response = requests.get(api_url, headers=headers, params=request.GET, timeout=30)
+            
         elif request.method == 'DELETE':
             response = requests.delete(api_url, headers=headers, timeout=30)
+            
         else:
             return JsonResponse({'error': 'Metodo no soportado'}, status=405)
 
