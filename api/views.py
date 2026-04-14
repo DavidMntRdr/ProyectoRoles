@@ -176,7 +176,7 @@ class MatrizPermisosView(APIView):
         if not validar_permiso(request, 3, 'C'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
 
-        todos_modulos = Modulo.objects.exclude(strNombreModulo='PERMISOS PERFIL')
+        todos_modulos = Modulo.objects.all()
         permisos_dict = {p.idModulo: p for p in PermisosPerfil.objects.filter(idPerfil=id_perfil)}
 
         resultado = []
@@ -274,7 +274,7 @@ class PerfilDetailView(APIView):
 class ModulosView(APIView):
     permission_classes = [AllowAny]
     def get(self, request):
-        if not validar_permiso(request, 1, 'C'):
+        if not validar_permiso(request, 14, 'C'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
 
         modulos = Modulo.objects.all()
@@ -282,7 +282,7 @@ class ModulosView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        if not validar_permiso(request, 1, 'A'):
+        if not validar_permiso(request, 14, 'A'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
         serializer = ModuloSerializer(data=request.data)
         if serializer.is_valid():
@@ -293,7 +293,7 @@ class ModulosView(APIView):
 class ModuloDetailView(APIView):
     permission_classes = [AllowAny]
     def put(self, request, id):
-        if not validar_permiso(request, 1, 'E'):
+        if not validar_permiso(request, 14, 'E'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -307,7 +307,7 @@ class ModuloDetailView(APIView):
             return Response({'message': 'Módulo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, id):
-        if not validar_permiso(request, 1, 'D'):
+        if not validar_permiso(request, 14, 'D'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
