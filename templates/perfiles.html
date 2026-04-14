@@ -95,24 +95,13 @@
     </div>
 </div>
 
-<div class="modal fade" id="detalleModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">Detalle del Perfil</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="detalleBody"></div>
-        </div>
-    </div>
-</div>
-
 <script>
     let perfiles = [];
     let paginaActual = 1;
     const itemsPorPagina = 5;
     let filtroActual = '';
 
+    // 1. Escuchar permisos y limpiar botón de agregar
     document.addEventListener('permisosListos', () => {
         const p = window.permisosGlobales['PERFIL'];
         if (p && !p.canAdd) document.getElementById('btnNuevoPerfil')?.remove();
@@ -128,7 +117,8 @@
 
     async function cargarPerfiles() {
         try {
-            const res = await fetch('/api/proxy/Seguridad/perfiles', {
+            // URL con diagonal final para evitar problemas de redirect en Render
+            const res = await fetch('/api/proxy/Seguridad/perfiles/', {
                 headers: { 'Authorization': `Bearer ${window.userToken}` }
             });
             if (res.ok) {
@@ -139,38 +129,41 @@
     }
 
     function renderizarTabla() {
-            const p = window.permisosGlobales ? window.permisosGlobales['PERFIL'] : null;
-            let datosFiltrados = perfiles.filter(perfil => 
-                perfil.strNombrePerfil.toLowerCase().includes(filtroActual.toLowerCase())
-            );
+        // Obtenemos los permisos del módulo
+        const p = window.permisosGlobales ? window.permisosGlobales['PERFIL'] : null;
+        
+        let datosFiltrados = perfiles.filter(perfil => 
+            perfil.strNombrePerfil.toLowerCase().includes(filtroActual.toLowerCase())
+        );
 
-            document.getElementById('contadorRegistros').innerText = `Total: ${datosFiltrados.length}`;
-            
-            const inicio = (paginaActual - 1) * itemsPorPagina;
-            const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
-            const tbody = document.getElementById('tabla-perfiles');
-            
-            if (paginados.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No se encontraron perfiles</td></tr>';
-                document.getElementById('paginacion').innerHTML = '';
-                return;
-            }
-            
-            tbody.innerHTML = paginados.map(perfil => `
-                <tr>
-                    <td><strong>${perfil.strNombrePerfil}</strong></td>
-                    <td><span class="badge ${perfil.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${perfil.bitAdministrador ? 'Sí' : 'No'}</span></td>
-                    <td class="text-center">
-                        ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${perfil.id})"><i class="bi bi-eye"></i></button>` : ''}
-                        
-                        ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarPerfil(${perfil.id})"><i class="bi bi-pencil"></i></button>` : ''}
-                        
-                        ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarPerfil(${perfil.id})"><i class="bi bi-trash"></i></button>` : ''}
-                    </td>
-                </tr>`).join('');
-            
-            generarPaginacion(datosFiltrados.length);
+        document.getElementById('contadorRegistros').innerText = `Total: ${datosFiltrados.length}`;
+        
+        const inicio = (paginaActual - 1) * itemsPorPagina;
+        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
+        const tbody = document.getElementById('tabla-perfiles');
+        
+        if (paginados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No se encontraron perfiles</td></tr>';
+            document.getElementById('paginacion').innerHTML = '';
+            return;
         }
+        
+        // CORRECCIÓN: Aseguramos que usamos "perfil.id" y no "u.id"
+        tbody.innerHTML = paginados.map(perfil => `
+            <tr>
+                <td><strong>${perfil.strNombrePerfil}</strong></td>
+                <td><span class="badge ${perfil.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${perfil.bitAdministrador ? 'Sí' : 'No'}</span></td>
+                <td class="text-center">
+                    ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${perfil.id})"><i class="bi bi-eye"></i></button>` : ''}
+                    
+                    ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarPerfil(${perfil.id})"><i class="bi bi-pencil"></i></button>` : ''}
+                    
+                    ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarPerfil(${perfil.id})"><i class="bi bi-trash"></i></button>` : ''}
+                </td>
+            </tr>`).join('');
+        
+        generarPaginacion(datosFiltrados.length);
+    }
 
     function generarPaginacion(total) {
         const totalPaginas = Math.ceil(total / itemsPorPagina);
@@ -178,11 +171,11 @@
         if (totalPaginas <= 1) { div.innerHTML = ''; return; }
 
         let html = '<nav><ul class="pagination pagination-modern flex-wrap">';
-        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1})">«</a></li>`;
+        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">«</a></li>`;
         for (let i = 1; i <= totalPaginas; i++) {
-            html += `<li class="page-item ${paginaActual === i ? 'active' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a></li>`;
+            html += `<li class="page-item ${paginaActual === i ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${i})">${i}</a></li>`;
         }
-        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1})">»</a></li>`;
+        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual + 1})">»</a></li>`;
         div.innerHTML = html + '</ul></nav>';
     }
 
@@ -203,10 +196,12 @@
         if (!nombre) return Swal.fire('Atención', 'El nombre del perfil es requerido', 'warning');
 
         const data = { strNombrePerfil: nombre, bitAdministrador: document.getElementById('esAdmin').checked };
-        const url = id ? `/api/proxy/Seguridad/perfiles/${id}` : '/api/proxy/Seguridad/perfiles';
+        
+        // URLs plurales con diagonal final
+        const url = id ? `/api/proxy/Seguridad/perfiles/${id}/` : '/api/proxy/Seguridad/perfiles/';
         const method = id ? 'PUT' : 'POST';
 
-        Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
         try {
             const res = await fetch(url, {
@@ -226,11 +221,11 @@
     };
 
     window.editarPerfil = function(id) {
-        const p = perfiles.find(x => x.id === id);
-        if (p) {
-            document.getElementById('perfilId').value = p.id;
-            document.getElementById('nombrePerfil').value = p.strNombrePerfil;
-            document.getElementById('esAdmin').checked = p.bitAdministrador;
+        const p_edit = perfiles.find(x => x.id === id);
+        if (p_edit) {
+            document.getElementById('perfilId').value = p_edit.id;
+            document.getElementById('nombrePerfil').value = p_edit.strNombrePerfil;
+            document.getElementById('esAdmin').checked = p_edit.bitAdministrador;
             document.getElementById('modalTitle').innerText = 'Editar Perfil';
             new bootstrap.Modal(document.getElementById('perfilModal')).show();
         }
@@ -243,12 +238,11 @@
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                const res = await fetch(`/api/proxy/Seguridad/perfiles/${id}`, {
+                const res = await fetch(`/api/proxy/Seguridad/perfiles/${id}/`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${window.userToken}` }
                 });
@@ -264,17 +258,20 @@
     };
 
     window.verDetalle = function(id) {
-        const p = perfiles.find(x => x.id === id);
-        if (p) {
-            document.getElementById('detalleBody').innerHTML = `
-                <div class="table-responsive">
-                    <table class="table table-sm table-borderless">
-                        <tr><th>ID:</th><td>${p.id}</td></tr>
-                        <tr><th>Nombre:</th><td><strong>${p.strNombrePerfil}</strong></td></tr>
-                        <tr><th>Admin:</th><td><span class="badge ${p.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${p.bitAdministrador ? 'Sí' : 'No'}</span></td></tr>
-                    </table>
-                </div>`;
-            new bootstrap.Modal(document.getElementById('detalleModal')).show();
+        // Cambiamos el nombre de variable local para no chocar con "p" de permisos
+        const perfilInfo = perfiles.find(x => x.id === id);
+        if (perfilInfo) {
+            Swal.fire({
+                title: 'Detalle del Perfil',
+                html: `
+                    <div class="text-start">
+                        <p><strong>ID:</strong> ${perfilInfo.id}</p>
+                        <p><strong>Nombre:</strong> ${perfilInfo.strNombrePerfil}</p>
+                        <p><strong>Es Admin:</strong> ${perfilInfo.bitAdministrador ? 'Sí' : 'No'}</p>
+                    </div>
+                `,
+                confirmButtonText: 'Cerrar'
+            });
         }
     };
 
