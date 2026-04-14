@@ -49,20 +49,6 @@ def validar_permiso_completo(request, nombre_modulo, bit_requerido='bitConsulta'
 # ==================== PROXY API INTERNO ====================
 
 
-
-Mira, David, aquí tienes el código del Proxy corregido y optimizado para que no haya falla en Render.
-
-He añadido print con flush=True. Esto es vital en Render: si no le pones el flush, el servidor guarda los mensajes en memoria y no los ves en la consola de la página hasta que el proceso se detiene. Con esto, cualquier error que pase en el hosting lo verás al instante.
-
-web/views.py (Proxy Completo)
-Python
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.http.multipartparser import MultiPartParser
-import requests
-import json
-import os
-
 @csrf_exempt
 def proxy_api(request, path):
     # 1. Determinar la URL de la API
