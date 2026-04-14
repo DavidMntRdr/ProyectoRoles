@@ -246,7 +246,7 @@
             cancelButtonText: 'Cancelar'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                const res = await fetch(`/api/proxy/Seguridad/perfil/${id}`, {
+                const res = await fetch(`/api/proxy/Seguridad/perfiles/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${window.userToken}` }
                 });
