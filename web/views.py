@@ -52,9 +52,14 @@ def validar_permiso_completo(request, nombre_modulo, bit_requerido='bitConsulta'
 
 @csrf_exempt
 def proxy_api(request, path):
-    scheme = 'https' if request.is_secure() else 'http'
-    host = request.get_host()
-    api_url = f"{scheme}://{host}/api/{path}"
+    import requests
+    import json
+    
+    if os.environ.get('RENDER'):
+        api_url = f"http://127.0.0.1:10000/api/{path}"
+    else:
+        scheme = 'https' if request.is_secure() else 'http'
+        api_url = f"{scheme}://{request.get_host()}/api/{path}"
     
     token = request.session.get('jwt_token')
     headers = {}
@@ -64,51 +69,26 @@ def proxy_api(request, path):
     try:
         if request.method in ['POST', 'PUT']:
             content_type = request.content_type or ''
-            
             if 'multipart/form-data' in content_type:
                 if request.method == 'PUT':
                     data_parser, files_parser = MultiPartParser(
                         request.META, request, request.upload_handlers
                     ).parse()
                     data = data_parser.dict()
-                    files_dict = {}
-                    for key, file_obj in files_parser.items():
-                        files_dict[key] = (file_obj.name, file_obj.read(), file_obj.content_type)
+                    files_dict = {k: (f.name, f.read(), f.content_type) for k, f in files_parser.items()}
                 else:
                     data = request.POST.dict()
-                    files_dict = {}
-                    for key, file_obj in request.FILES.items():
-                        files_dict[key] = (file_obj.name, file_obj.read(), file_obj.content_type)
+                    files_dict = {k: (f.name, f.read(), f.content_type) for k, f in request.FILES.items()}
 
-                response = requests.request(
-                    method=request.method,
-                    url=api_url,
-                    files=files_dict,
-                    data=data,
-                    headers=headers,
-                    timeout=30
-                )
-            
+                response = requests.request(request.method, api_url, files=files_dict, data=data, headers=headers, timeout=30)
             else:
-                try:
-                    body_data = json.loads(request.body.decode('utf-8')) if request.body else {}
-                except:
-                    body_data = {}
-                
-                response = requests.request(
-                    method=request.method,
-                    url=api_url,
-                    json=body_data,
-                    headers=headers,
-                    timeout=30
-                )
+                body_data = json.loads(request.body.decode('utf-8')) if request.body else {}
+                response = requests.request(request.method, api_url, json=body_data, headers=headers, timeout=30)
 
         elif request.method == 'GET':
             response = requests.get(api_url, headers=headers, params=request.GET, timeout=30)
-            
         elif request.method == 'DELETE':
             response = requests.delete(api_url, headers=headers, timeout=30)
-            
         else:
             return JsonResponse({'error': 'Metodo no soportado'}, status=405)
 
@@ -148,8 +128,8 @@ def login_view(request):
             request.session['perfil_id'] = data['perfilId']
             request.session['username'] = data['username']
             
-            print(f"✅ LOGIN EXITOSO: {data['username']}")
-            print(f"✅ TOKEN guardado: {data['token'][:50]}...")
+            print(f"LOGIN EXITOSO: {data['username']}")
+            print(f"TOKEN guardado: {data['token'][:50]}...")
             
             return redirect('dashboard')
         else:
