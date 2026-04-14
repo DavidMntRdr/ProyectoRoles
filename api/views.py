@@ -254,12 +254,20 @@ class PerfilDetailView(APIView):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            perfil = Perfil.objects.get(id=id)
+            perfil = Perfil.objects.get(pk=id)
+            
+            PermisosPerfil.objects.filter(idPerfil=id).delete()
+            
             perfil.delete()
-            return Response({'message': 'Perfil eliminado'})
+            
+            return Response({'message': 'Perfil eliminado correctamente'})
+            
         except Perfil.DoesNotExist:
             return Response({'message': 'Perfil no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
 
+            print(f"Error real: {str(e)}") 
+            return Response({'message': f'Error de base de datos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ==================== MÓDULOS CONTROLLER ====================
 
