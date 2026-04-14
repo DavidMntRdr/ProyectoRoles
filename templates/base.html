@@ -190,8 +190,9 @@
     <div class="breadcrumb-container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb" id="breadcrumb-nav">
+                {% block breadcrumb %}
                 <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
-                {% block breadcrumb %} {% endblock %}
+                {% endblock %}
             </ol>
         </nav>
     </div>
