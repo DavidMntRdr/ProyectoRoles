@@ -139,36 +139,38 @@
     }
 
     function renderizarTabla() {
-        const p = window.permisosGlobales ? window.permisosGlobales['PERFIL'] : null;
-        let datosFiltrados = perfiles.filter(perfil => 
-            perfil.strNombrePerfil.toLowerCase().includes(filtroActual.toLowerCase())
-        );
+            const p = window.permisosGlobales ? window.permisosGlobales['PERFIL'] : null;
+            let datosFiltrados = perfiles.filter(perfil => 
+                perfil.strNombrePerfil.toLowerCase().includes(filtroActual.toLowerCase())
+            );
 
-        document.getElementById('contadorRegistros').innerText = `Total: ${datosFiltrados.length}`;
-        
-        const inicio = (paginaActual - 1) * itemsPorPagina;
-        const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
-        const tbody = document.getElementById('tabla-perfiles');
-        
-        if (paginados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No se encontraron perfiles</td></tr>';
-            document.getElementById('paginacion').innerHTML = '';
-            return;
+            document.getElementById('contadorRegistros').innerText = `Total: ${datosFiltrados.length}`;
+            
+            const inicio = (paginaActual - 1) * itemsPorPagina;
+            const paginados = datosFiltrados.slice(inicio, inicio + itemsPorPagina);
+            const tbody = document.getElementById('tabla-perfiles');
+            
+            if (paginados.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No se encontraron perfiles</td></tr>';
+                document.getElementById('paginacion').innerHTML = '';
+                return;
+            }
+            
+            tbody.innerHTML = paginados.map(perfil => `
+                <tr>
+                    <td><strong>${perfil.strNombrePerfil}</strong></td>
+                    <td><span class="badge ${perfil.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${perfil.bitAdministrador ? 'Sí' : 'No'}</span></td>
+                    <td class="text-center">
+                        ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${perfil.id})"><i class="bi bi-eye"></i></button>` : ''}
+                        
+                        ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarPerfil(${perfil.id})"><i class="bi bi-pencil"></i></button>` : ''}
+                        
+                        ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarPerfil(${perfil.id})"><i class="bi bi-trash"></i></button>` : ''}
+                    </td>
+                </tr>`).join('');
+            
+            generarPaginacion(datosFiltrados.length);
         }
-        
-        tbody.innerHTML = paginados.map(perfil => `
-            <tr>
-                <td><strong>${perfil.strNombrePerfil}</strong></td>
-                <td><span class="badge ${perfil.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${perfil.bitAdministrador ? 'Sí' : 'No'}</span></td>
-                <td class="text-center">
-                    ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>` : ''}
-                    ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarPerfil(${perfil.id})"><i class="bi bi-pencil"></i></button>` : ''}
-                    ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarPerfil(${perfil.id})"><i class="bi bi-trash"></i></button>` : ''}
-                </td>
-            </tr>`).join('');
-        
-        generarPaginacion(datosFiltrados.length);
-    }
 
     function generarPaginacion(total) {
         const totalPaginas = Math.ceil(total / itemsPorPagina);
