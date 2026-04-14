@@ -2,5 +2,5 @@ venv
 .venv
 __pycache__
 staticfiles
-db.sqlite3
-.git
+*.sqlite3
+.gite
