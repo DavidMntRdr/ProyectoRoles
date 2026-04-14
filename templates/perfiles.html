@@ -161,7 +161,7 @@
                 <td><strong>${perfil.strNombrePerfil}</strong></td>
                 <td><span class="badge ${perfil.bitAdministrador ? 'bg-success' : 'bg-secondary'}">${perfil.bitAdministrador ? 'Sí' : 'No'}</span></td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-info me-1" onclick="verDetalle(${perfil.id})"><i class="bi bi-eye"></i></button>
+                    ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>` : ''}
                     ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarPerfil(${perfil.id})"><i class="bi bi-pencil"></i></button>` : ''}
                     ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarPerfil(${perfil.id})"><i class="bi bi-trash"></i></button>` : ''}
                 </td>

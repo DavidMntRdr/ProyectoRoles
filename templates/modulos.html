@@ -153,6 +153,7 @@
             <tr>
                 <td><strong>${m.strNombreModulo || m.nombreModulo}</strong></td>
                 <td class="text-center">
+                    ${p?.canDetail ? `<button class="btn btn-sm btn-info me-1" onclick="verDetalle(${u.id})"><i class="bi bi-eye"></i></button>` : ''}
                     ${p?.canEdit ? `<button class="btn btn-sm btn-warning me-1" onclick="editarModulo(${m.id})"><i class="bi bi-pencil"></i></button>` : ''}
                     ${p?.canDelete ? `<button class="btn btn-sm btn-danger" onclick="eliminarModulo(${m.id})"><i class="bi bi-trash"></i></button>` : ''}
                 </td>
