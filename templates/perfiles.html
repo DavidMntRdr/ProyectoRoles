@@ -38,7 +38,7 @@
 <div class="card-modern">
     <div class="card-header-modern d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h4 class="mb-0"><i class="bi bi-shield-lock"></i> Gestión de Perfiles</h4>
-        <button class="btn btn-success" id="btnNuevoPerfil" onclick="abrirModal()">
+        <button class="btn btn-light" id="btnNuevoPerfil" onclick="abrirModal()">
             <i class="bi bi-plus-circle"></i> Nuevo Perfil
         </button>
     </div>
@@ -201,7 +201,7 @@
         if (!nombre) return Swal.fire('Atención', 'El nombre del perfil es requerido', 'warning');
 
         const data = { strNombrePerfil: nombre, bitAdministrador: document.getElementById('esAdmin').checked };
-        const url = id ? `/api/proxy/Seguridad/perfil/${id}` : '/api/proxy/Seguridad/perfil';
+        const url = id ? `/api/proxy/Seguridad/perfiles/${id}` : '/api/proxy/Seguridad/perfiles';
         const method = id ? 'PUT' : 'POST';
 
         Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
