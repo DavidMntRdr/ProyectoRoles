@@ -176,7 +176,7 @@ class MatrizPermisosView(APIView):
         if not validar_permiso(request, 3, 'C'):
             return Response({'message': 'No tiene permiso'}, status=status.HTTP_403_FORBIDDEN)
 
-        todos_modulos = Modulo.objects.all()
+        todos_modulos = Modulo.objects.exclude(strNombreModulo='PERMISOS PERFIL')
         permisos_dict = {p.idModulo: p for p in PermisosPerfil.objects.filter(idPerfil=id_perfil)}
 
         resultado = []
