@@ -93,7 +93,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/'  
 MEDIA_ROOT = os.path.join(BASE_DIR, 'wwwroot')
 
-# Asegurar creación de carpeta
 if not os.path.exists(MEDIA_ROOT):
     os.makedirs(MEDIA_ROOT)
 
